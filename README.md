@@ -26,4 +26,4 @@ AstraNotes
 
 
 ## Credits
-* **Qt License**: [Megascans](https://quixel.com/megascans/) by Quixel / Epic Games.
+* **Qt License**: [Obligations of the GPL and LGPL](https://www.qt.io/development/open-source-lgpl-obligations) by Qt.
