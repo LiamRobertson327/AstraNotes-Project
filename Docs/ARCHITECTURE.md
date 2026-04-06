@@ -1,5 +1,5 @@
 # AstraNotes: Simplified Modular Architecture
-## High-Performance C++20 Note-Taking Application
+## High-Performance C++23 Note-Taking Application
 
 **Version**: 2.0 (Simplified)  
 **Date**: April 2, 2026  
@@ -18,7 +18,7 @@ This document defines a **streamlined, production-grade modular architecture** f
 | Aspect | Original | Simplified | Benefit |
 |--------|----------|-----------|---------|
 | Service classes | 8 | 4 | 50% less code |
-| Plugin complexity | Separate build | Linked directly | Simpler build system |
+| Plugin complexity | Separate build | Dynamic Qt plugin loading | Runtime extensibility |
 | Test folders | 7 | 3 | Easier navigation |
 | CMakeLists.txt | 10+ | 3-4 | Faster builds |
 | Total directories | 50+ | 25 | 50% fewer files |
@@ -34,45 +34,20 @@ This document defines a **streamlined, production-grade modular architecture** f
 
 ## 2. HIGH-LEVEL ARCHITECTURE (Simplified 7 Layers)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    GUI LAYER (Qt6 - MVC)                        │
-│           Views + Controllers (User Interaction)                │
-├─────────────────────────────────────────────────────────────────┤
-│                      APPLICATION MODELS                         │
-│    Qt Model Adapters + Domain Objects (Note, Collections)       │
-├─────────────────────────────────────────────────────────────────┤
-│                    PLUGIN SYSTEM LAYER                          │
-│         IPlugin Interface + 3 Built-in Plugins                  │
-│         (Text, Voice, Secure) + PluginManager                   │
-├─────────────────────────────────────────────────────────────────┤
-│                    SERVICE LAYER (Simplified)                   │
-│   ┌──────────────┐  ┌──────────────┐  ┌────────────────┐       │
-│   │ NoteService  │  │SearchService │  │EncryptionSvc   │       │
-│   │ (CRUD+Validation)│ (Full-text) │  │(AES-256-GCM)   │       │
-│   └──────────────┘  └──────────────┘  └────────────────┘       │
-│   ┌──────────────┐                                              │
-│   │CacheManager  │                                              │
-│   │(LRU Caching) │                                              │
-│   └──────────────┘                                              │
-├─────────────────────────────────────────────────────────────────┤
-│                   PERSISTENCE LAYER                             │
-│    INoteRepository Interface + SQLiteNoteRepository             │
-│    (Optimized for 10K+ notes, indexed  for performance)         │
-├─────────────────────────────────────────────────────────────────┤
-│                  INFRASTRUCTURE LAYER                           │
-│   Result<T>  │  Error  │  Logger  │  Config  │  Platform       │
-│   (Error Handling + Utilities + OS Abstraction)                 │
-├─────────────────────────────────────────────────────────────────┤
-│                   SQLite Database                               │
-│      (10K+ notes, fully indexed, WAL mode)                      │
-└─────────────────────────────────────────────────────────────────┘
-```
+The architecture is organized into seven simplified functional layers:
+
+- GUI Layer: Qt6-based MVC views and controllers for user interaction.
+- Application Models: Qt model adapters and domain objects mapped to persistent storage.
+- Plugin System Layer: runtime-discovered plugins managed by a plugin loader.
+- Service Layer: NoteService, SearchService, EncryptionService, and CacheManager.
+- Persistence Layer: repository interfaces backed by an optimized SQLite implementation.
+- Infrastructure Layer: `std::expected<T, Error>` for explicit error handling, logging, configuration, and Qt platform utilities.
+- SQLite Database: a WAL-mode storage engine with full-text search and version snapshot support.
 
 **Key Simplifications:**
 - ✅ **4 services instead of 8** - Validation integrated into NoteService, Backup/Sync/Export removed (handled by plugins)
-- ✅ **Built-in plugins linked directly** - No separate DLL/SO build system
-- ✅ **Single Platform file** - Windows/Mac/Linux code in one file with #ifdef
+- ✅ **Dynamic Qt plugin loading** - Discover plugins at runtime with `QPluginLoader`
+- ✅ **Qt platform abstractions** - Use `QStandardPaths` and `QSysInfo` instead of custom platform code
 - ✅ **3 test folders** - Unit, Integration, Performance (combined with stress tests)
 - ✅ **No separate public headers** - Use relative includes within src/
 
@@ -83,267 +58,92 @@ This document defines a **streamlined, production-grade modular architecture** f
 ### 3.1 MODEL LAYER (Domain)
 
 #### **3.1.1 Note Class Hierarchy**
-```
-INote (Abstract Interface)
-├── Note (Base Implementation)
-│   ├── metadata (id, title, createdAt, updatedAt)
-│   ├── content (std::string or binary)
-│   ├── tags (std::vector<std::string>)
-│   ├── format (NoteFormat type)
-│   └── encryption metadata
-├── TextNote : public Note
-│   └── markdown support
-├── VoiceNote : public Note
-│   ├── audio buffer (std::vector<uint8_t>)
-│   ├── duration
-│   ├── transcription (optional)
-│   └── sample rate, codec
-└── SecureNote : public Note
-    ├── encrypted payload
-    ├── encryption key hash
-    └── access control list (ACL)
-```
 
-#### **3.1.2 NoteCollection Class**
-```cpp
-class NoteCollection {
-  std::unordered_map<NoteID, std::shared_ptr<Note>> notes;  // O(1) lookup
-  std::vector<NoteID> indices;  // For stable ordering
-  
-  // Indexed access for fast searching
-  std::unordered_map<std::string, std::vector<NoteID>> tagIndex;  
-  std::unordered_map<std::string, std::vector<NoteID>> titleIndex;
-  
-  void add(std::shared_ptr<Note>);
-  void remove(NoteID);
-  std::vector<std::shared_ptr<Note>> search(const SearchQuery&);
-  std::vector<std::shared_ptr<Note>> getByTag(const std::string&);
-};
-```
+The domain model includes a base `Note` abstraction with metadata, content, tags, format, and optional encryption metadata. Specialized note types such as text, voice, and secure notes extend the base model with format-specific behavior and storage details.
 
-#### **3.1.3 NoteFormat Enum & Handler**
-```cpp
-enum class NoteFormat {
-  Plain,
-  Markdown,
-  RichText,
-  JSON,
-  YAML
-};
+- `Note`: base implementation containing id, title, timestamps, tags, content, and format metadata.
+- `TextNote`: adds support for markdown and rich-text content.
+- `VoiceNote`: adds audio payloads, duration, and optional transcription.
+- `SecureNote`: stores encrypted payload and access controls.
 
-class IFormatHandler {
-  virtual std::string serialize(const Note&) = 0;
-  virtual std::unique_ptr<Note> deserialize(const std::string&) = 0;
-  virtual bool validate(const std::string&) = 0;
-};
-```
+#### **3.1.2 Persistent Note Storage**
+
+Notes are persisted in SQLite with FTS5 full-text search. The domain layer does not rely on an in-memory `NoteCollection` container for core storage. Instead, notes are loaded and mapped from the database on demand, while caching is managed separately by the service layer.
+
+To optimize performance for large collections (10,000+ notes), the application implements lazy loading: only note IDs, titles, and metadata are loaded initially for listing and browsing. Full note content is loaded on demand when the user clicks on a specific note, reducing memory usage and improving responsiveness.
+
+- The `note` table contains metadata and serialized content.
+- FTS5 indexes provide full-text search across titles, body text, and tags.
+- The repository retrieves and materializes notes as needed rather than maintaining a full in-memory collection.
+
+#### **3.1.3 NoteFormat and Format Handling**
+
+Notes support multiple content formats such as plain text, markdown, rich text, JSON, and YAML. Format handling is abstracted by an interface that provides serialization, deserialization, and validation for each supported format.
 
 ---
 
 ### 3.2 PLUGIN SYSTEM
 
 #### **3.2.1 Plugin Interface (Core)**
-```cpp
-class IPlugin : public std::enable_shared_from_this<IPlugin> {
- public:
-  virtual ~IPlugin() = default;
-  
-  // Metadata
-  virtual std::string getName() const = 0;
-  virtual std::string getVersion() const = 0;
-  virtual std::string getAuthor() const = 0;
-  virtual std::vector<std::string> getDependencies() const = 0;
-  
-  // Lifecycle
-  virtual bool initialize(const IPluginContext* ctx) = 0;
-  virtual bool shutdown() = 0;
-  virtual bool isInitialized() const = 0;
-  
-  // Capabilities
-  virtual std::vector<std::string> getSupportedNoteTypes() const = 0;
-  virtual std::vector<std::string> getSupportedMimeTypes() const = 0;
-  
-  // Operations
-  virtual Result<std::string> processNote(const Note& note) = 0;
-  virtual Result<void> exportNote(const Note& note, const std::string& path) = 0;
-  virtual Result<std::unique_ptr<Note>> importNote(const std::string& path) = 0;
-};
 
-class IPluginContext {
-  virtual ILogger* getLogger() = 0;
-  virtual IConfiguration* getConfig() = 0;
-  virtual IRepository* getRepository() = 0;
-};
-```
+The Core Application manages the lifeime of all Data Objects created by plugins.  Plugins must provide serialization logic so that the Core can persist data even after a plugin is unloaded.  The plugin interface is defined by an `IPlugin` abstraction with metadata, lifecycle management, supported note and mime types, and operations for processing, importing, and exporting notes. Plugins are discovered at runtime with Qt plugin loading and receive application context through a plugin context interface.
 
-#### **3.2.2 Built-In Plugins**
-
-**TextPlugin**
-```cpp
-class TextPlugin : public IPlugin {
-  // Plain text, markdown, rich text handling
-  // Features: syntax highlighting metadata, export to PDF/HTML
-};
-```
-
-**VoicePlugin**
-```cpp
-class VoicePlugin : public IPlugin {
-  // Audio processing: record, playback, transcription
-  // Features: WAV/MP3 codec support, speech-to-text integration
-};
-```
-
-**SecurePlugin**
-```cpp
-class SecurePlugin : public IPlugin {
-  // AES-256 encryption, key derivation (PBKDF2)
-  // Features: access control, audit logging
-};
-```
+#### **3.2.2 Plugin Loading**
+Plugins are discovered at runtime from a configured plugin directory and loaded via `QPluginLoader`. This keeps the core application decoupled from plugin implementations and allows new plugins to be added without recompilation.
 
 #### **3.2.3 Plugin Manager**
-```cpp
-class PluginManager {
-  std::unordered_map<std::string, std::shared_ptr<IPlugin>> plugins;
-  
-  // Built-in plugins auto-registered on startup
-  void initialize() {
-    registerPlugin(std::make_shared<TextPlugin>());
-    registerPlugin(std::make_shared<VoicePlugin>());
-    registerPlugin(std::make_shared<SecurePlugin>());
-  }
-  
-  Result<std::shared_ptr<IPlugin>> getPlugin(const std::string& name);
-  std::vector<std::string> listLoadedPlugins() const;
-};
-```
+
+The plugin manager is responsible for discovering and loading plugins from a configured directory using `QPluginLoader`, tracking active plugin instances, and exposing loaded plugins to application components. It keeps the core application decoupled from plugin implementations while supporting runtime extensibility.
 
 **Simplified Approach**:
-- ✅ Built-in plugins auto-registered (no loading complexity)
-- ✅ Single registration call on app startup
-- ✅ External plugins can be added later if needed
+- ✅ Plugins discovered and loaded dynamically via `QPluginLoader`
+- ✅ `Q_DECLARE_INTERFACE` enables Qt plugin casting
+- ✅ Core application remains platform-agnostic and extensible
 
----
+#### **3.3.0 Versioning Support**
+The repository layer includes a `version_history` table that stores up to two historical snapshots per note. Each snapshot is a blob of the note state, linked by `note_id` and ordered by `timestamp`. When a third snapshot is created, the oldest snapshot for that note is deleted, simplifying rollback logic.  A snapshot is created only when a
+note is opened for editing, or manually by the user.
 
-### 3.3 REPOSITORY LAYER (Persistence)
 
 #### **3.3.1 Repository Interface (Generic)**
-```cpp
-template<typename T>
-class IRepository {
- public:
-  virtual ~IRepository() = default;
-  virtual Result<std::shared_ptr<T>> get(const ID&) = 0;
-  virtual Result<std::vector<std::shared_ptr<T>>> getAll() = 0;
-  virtual Result<std::vector<std::shared_ptr<T>>> search(const Query&) = 0;
-  virtual Result<void> save(std::shared_ptr<T>) = 0;
-  virtual Result<void> delete_item(const ID&) = 0;
-  virtual Result<void> update(std::shared_ptr<T>) = 0;
-  virtual Result<size_t> count() = 0;
-};
 
-// Specialization for Note
-using INoteRepository = IRepository<Note>;
-```
+The repository layer exposes generic persistence operations for data retrieval, search, save, update, and deletion. All repository operations use `std::expected` for explicit error handling.
+
+Specializations such as `INoteRepository` expose note-specific persistence behavior.
 
 #### **3.3.2 SQLite Implementation (Primary)**
-```cpp
-class SQLiteNoteRepository : public INoteRepository {
-  std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db;
-  
-  // Schema:
-  // notes (id, title, content, type, format, created, updated, encrypted, metadata)
-  // tags (note_id, tag_name) - indexed
-  // attachments (id, note_id, filename, data)
-  // audit_log (note_id, action, timestamp, user_id) - for secure notes
-  
-  // Performance optimizations:
-  // - Prepared statements (cached)
-  // - Batch inserts (transaction grouping)
-  // - Indices on (id, created, type, tag_name)
-  // - Paging for large result sets
-};
-```
+
+The primary persistence implementation uses SQLite with a schema optimized for note metadata, attachments, tags, and secure note audit logging. Performance is achieved through prepared statements, batched transactions, and indices on frequently queried columns.
 
 #### **3.3.3 Query & Filter DSL**
-```cpp
-class Query {
-  std::vector<Predicate> predicates;
-  SortOrder sortBy;
-  size_t limit, offset;
-};
 
-// Usage
-Query q;
-q.where("type", "=", "text")
- .and_where("tag", "contains", "important")
- .orderBy("updated", SortOrder::DESC)
- .limit(100)
- .offset(0);
-
-auto results = repo->search(q);
-```
+The persistence layer supports composable query objects with predicates, sort order, paging, and filtering. Repositories interpret these query objects into SQLite statements for searches and retrievals.
 
 ---
 
 ### 3.4 SERVICE LAYER (Simplified to 4 Core Services)
 
 #### **3.4.1 NoteService (Combines CRUD + Validation)**
-```cpp
-class NoteService {
-  std::shared_ptr<INoteRepository> repository;
-  std::shared_ptr<EncryptionService> encryptionService;
-  
-  // CRUD Operations
-  Result<std::shared_ptr<Note>> createNote(const NoteCreateRequest&);
-  Result<void> updateNote(const NoteUpdateRequest&);
-  Result<void> deleteNote(const NoteID&);
-  Result<std::shared_ptr<Note>> getNote(const NoteID&);
-  
-  // Validation (inline - no separate service)
-  void validateTitle(const std::string&);
-  void validateContent(const std::string&);
-  void validateTags(const std::vector<std::string>&);
-};
-```
+
+The NoteService performs note creation, retrieval, update, and deletion through the repository interface. It also validates titles, content, and tags inline rather than using a separate validation service.
+
 **Removed**: Separate ValidationService (integrated here)
 
 #### **3.4.2 SearchService (Full-Text Only)**
-```cpp
-class SearchService {
-  std::shared_ptr<INoteRepository> repo;
-  std::unordered_map<std::string, std::vector<NoteID>> invertedIndex;
-  
-  std::vector<std::shared_ptr<Note>> search(const SearchQuery&);
-  std::vector<std::shared_ptr<Note>> fullTextSearch(const std::string& query);
-  void indexNote(const std::shared_ptr<Note>&);
-  void deindexNote(const NoteID&);
-};
-```
+
+The SearchService uses the repository's full-text search capabilities to perform note searches. It maintains search-related state and defers text indexing to the persistence layer rather than implementing a separate query builder abstraction.
+
 **Removed**: QueryBuilder DSL (simple WHERE clauses only)
 
 #### **3.4.3 EncryptionService (AES-256-GCM Only)**
-```cpp
-class EncryptionService {
-  Result<std::string> encrypt(const std::string& plaintext, const EncryptionKey&);
-  Result<std::string> decrypt(const std::string& ciphertext, const EncryptionKey&);
-  EncryptionKey deriveKey(const std::string& password, const std::string& salt);
-};
-```
+
+The EncryptionService provides authenticated AES-256-GCM encryption and decryption for secure note payloads. Key derivation is handled through a simple password-based scheme, with no separate key management service.
+
 **Simplified**: No key management system (simple derivation only)
 
 #### **3.4.4 CacheManager (LRU Caching Only)**
-```cpp
-class CacheManager {
-  static constexpr size_t CACHE_SIZE_MB = 256;
-  std::unordered_map<NoteID, std::shared_ptr<Note>> cache;
-  std::deque<NoteID> lru_queue;
-  
-  Result<std::shared_ptr<Note>> get(const NoteID&);
-  void put(const NoteID&, std::shared_ptr<Note>);
-};
-```
+
+The CacheManager provides an in-memory LRU cache for recently accessed notes. It is designed to reduce repeated database reads while ensuring the repository remains the source of truth. All cache operations use `std::expected` where errors may occur.  The Cache must be invalidated when a Snapshot is restored to prevent showing old data.
 
 **Removed Services:**
 - ❌ ExportService (handled by plugins)
@@ -356,152 +156,43 @@ class CacheManager {
 ### 3.5 USER INTERFACE LAYER (MVC: View + Controller)
 
 #### **3.5.1 MVC Pattern**
-```
-VIEW (Display)
-  ├─ MainWindow
-  ├─ NoteListView
-  ├─ NoteEditorView
-  ├─ SearchView
-  └─ SettingsDialog
 
-CONTROLLER (User Interaction)
-  ├─ NoteController
-  ├─ SearchController
-  ├─ PluginController
-  └─ SettingsController
-
-MODEL (Data - See Model Layer above)
-  ├─ Note
-  ├─ NoteCollection
-  └─ Application State
-```
+The UI layer follows the MVC paradigm, with view components for windows and dialogs, controllers for user interaction, and Qt model adapters for application state. The model layer is backed by lightweight note summaries (containing ID, title, and metadata) rather than full persisted note objects, enabling lazy loading of content to maintain performance for large note collections.
 
 #### **3.5.2 UI Framework Choice**
 - **Primary**: Qt 6 (cross-platform, mature, best for desktop)
 - **Alternative**: wxWidgets (lighter weight)
-- **Web**: Qt WebEngine for embedded browser features
+
+Web-based UI using Qt WebEngine for embedded browser features is a future consideration. For now, we are implementing a native executable application.
 
 #### **3.5.3 Events & Signals**
-```cpp
-class NoteController {
-  Signal<void(const std::shared_ptr<Note>&)> noteCreated;
-  Signal<void(const std::shared_ptr<Note>&)> noteUpdated;
-  Signal<void(const NoteID&)> noteDeleted;
-  Signal<void(const std::string&)> searchCompleted;
-  
-  void onNoteCreated(const NoteCreateRequest& req);
-  void onNoteEdited(const NoteUpdateRequest& req);
-  void onNoteDeleted(const NoteID& id);
-};
-```
+
+The controller layer uses Qt signals and slots to propagate note lifecycle events such as creation, updating, deletion, and search completion. Controllers expose event notifications to views and services without embedding business logic directly in UI components.
 
 ---
 
 ### 3.6 ERROR HANDLING STRATEGY
 
-#### **3.6.1 Result<T> Type (Railway-Oriented Programming)**
-```cpp
-template<typename T>
-class Result {
-  std::variant<T, Error> value;
-  
- public:
-  bool isOk() const;
-  bool isErr() const;
-  T& unwrap();
-  Error& error();
-  
-  template<typename F>
-  Result<typename F::return_type> map(F&& fn) const;
-};
+#### **3.6.1 `std::expected` Type (C++23)**
 
-// Usage
-auto result = service->createNote(req);
-if (result.isOk()) {
-  auto note = result.unwrap();
-} else {
-  auto err = result.error();
-  logger->error("Failed to create note: {}", err.message());
-}
-```
+The application uses `std::expected<T, Error>` for all operation results, ensuring that success and failure cases are explicit and handled at each boundary.
 
 #### **3.6.2 Error Hierarchy**
-```cpp
-class Error {
-  ErrorCode code;
-  std::string message;
-  std::string context;
-  std::optional<std::exception_ptr> cause;
-};
 
-enum class ErrorCode {
-  // Data
-  NotFound = 1000,
-  AlreadyExists = 1001,
-  InvalidInput = 1002,
-  
-  // Storage
-  StorageError = 2000,
-  CorruptedData = 2001,
-  
-  // Permission
-  PermissionDenied = 3000,
-  EncryptionFailed = 3001,
-  
-  // System
-  OutOfMemory = 4000,
-  IOError = 4001,
-  
-  // Unknown
-  Unknown = 9999
-};
-```
+Errors are modeled as a structured hierarchy with codes and messages for data, storage, permission, and system failures. This enables consistent reporting and recovery across services.
 
 #### **3.6.3 Exception Safety**
-- **Strong Guarantee**: Operations either succeed completely or have no side effects
-- **Nothrow Guarantee**: Destructors, getters, const operations
-- **Basic Guarantee**: Minimum; object remains in valid state
-
-```cpp
-class NoteService {
-  void updateNote(const NoteUpdateRequest& req) noexcept(false) {
-    auto old = repository->get(req.id);  // Get current state (for rollback)
-    try {
-      // Update operations
-      repository->save(updated);
-    } catch (...) {
-      repository->save(old);  // Rollback
-      throw;
-    }
-  }
-};
-```
+- **Strong Guarantee**: Operations either complete successfully or leave state unchanged.
+- **Nothrow Guarantee**: Destructors and simple accessors remain noexcept.
+- **Basic Guarantee**: Objects remain valid after failure.
 
 ---
 
 ### 3.7 MEMORY MANAGEMENT
 
 #### **3.7.1 RAII Principles**
-```cpp
-// File I/O - RAII
-class FileGuard {
-  std::unique_ptr<FILE, decltype(&fclose)> file;
- public:
-  FileGuard(const std::string& path)
-    : file(fopen(path.c_str(), "rb"), &fclose) {
-    if (!file) throw std::runtime_error("Cannot open file");
-  }
-  // Destructor automatically closes file
-};
 
-// Database connection - RAII
-class DBConnection {
-  std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db;
- public:
-  DBConnection(const std::string& path);
-  ~DBConnection() = default;  // Auto cleanup
-};
-```
+Resource management follows RAII across file I/O and database connections. Objects own their resources and release them automatically in destructors.
 
 #### **3.7.2 Smart Pointer Policy**
 | Use Case | Type | Rationale |
@@ -512,117 +203,46 @@ class DBConnection {
 | Event handlers | `std::function<>` | Callback type erasure |
 
 #### **3.7.3 Memory Optimization for 10K+ Notes**
-```cpp
-class NoteCache {
-  static constexpr size_t CACHE_SIZE = 256;  // MB
-  std::unordered_map<NoteID, std::shared_ptr<Note>> cache;
-  std::deque<NoteID> lru_queue;  // LRU eviction
-  
-  void evictLRU() {
-    if (cache.size() > CACHE_SIZE / sizeof(Note)) {
-      auto oldest = lru_queue.front();
-      cache.erase(oldest);
-      lru_queue.pop_front();
-    }
-  }
-};
-```
+
+Memory optimization focuses on limiting resident note state, using a bounded LRU cache, and deferring full note materialization until required. This supports 10,000+ notes with minimal memory overhead.
 
 ---
 
 ### 3.8 TESTING ARCHITECTURE
 
 #### **3.8.1 Test Layers**
-```
-Unit Tests (70% coverage)
-├─ Model Tests (Note, NoteCollection)
-├─ Service Tests (NoteService, SearchService)
-├─ Repository Tests (with InMemoryRepository mock)
-└─ Plugin Tests (plugin interface compliance)
 
-Integration Tests (20% coverage)
-├─ End-to-end workflows
-├─ Database interactions
-├─ Plugin loading & execution
-└─ Encryption roundtrips
-
-Performance Tests (5% coverage)
-├─ 10K note operations
-├─ Search performance
-├─ Memory usage under load
-└─ Plugin load time
-
-UI Tests (5% coverage)
-├─ Controller behavior
-├─ Signal/slot chains
-└─ User workflows
-```
+The testing architecture includes:
+- Unit tests for model, service, repository, and plugin behavior.
+- Integration tests for end-to-end workflows, database interactions, plugin loading, and encryption roundtrips.
+- Performance tests for large note operations, search performance, memory usage, and cache behavior.
+- UI tests for controller behavior, signal/slot chains, and user workflows.
 
 #### **3.8.2 Test Infrastructure**
-```cpp
-// Base fixture
-class NoteRepositoryTest : public ::testing::Test {
- protected:
-  std::unique_ptr<InMemoryNoteRepository> repository;
-  std::unique_ptr<NoteService> service;
-  
-  void SetUp() override {
-    repository = std::make_unique<InMemoryNoteRepository>();
-    service = std::make_unique<NoteService>(repository);
-  }
-};
 
-// Mock templates
-class MockNoteRepository : public INoteRepository {
-  MOCK_METHOD(...);
-};
-
-// Parameterized tests
-class SearchPerformanceTest
-  : public ::testing::TestWithParam<size_t> {
-  // Tests with 1K, 5K, 10K notes
-};
-```
+Test infrastructure is built around fixtures and mockable repository interfaces, enabling both in-memory unit testing and integration scenarios with SQLite-backed persistence.
 
 ---
 
 ## 4. CROSS-PLATFORM STRATEGIES (Simplified)
 
-### 4.1 Single Platform File with #ifdef
+### 4.1 Qt Abstractions for Platform-Agnostic Logic
 
-Instead of separate Windows/Mac/Linux folders, use one `Platform.cpp` with conditional compilation:
+Instead of custom OS-specific files, the application relies on Qt's platform abstraction APIs for data directories, plugin discovery paths, and runtime environment checks. This keeps core logic platform-agnostic and reduces OS-specific branching.
 
-```cpp
-// Platform.cpp
-#ifdef _WIN32
-  #include <windows.h>
-  std::string Platform::getDataDirectory() {
-    // Windows: %APPDATA%/AstraNotes
-  }
-#elif __APPLE__
-  #include <Foundation/Foundation.h>
-  std::string Platform::getDataDirectory() {
-    // macOS: ~/Library/Application Support/AstraNotes
-  }
-#else
-  #include <unistd.h>
-  std::string Platform::getDataDirectory() {
-    // Linux: ~/.config/astranotesscout
-  }
-#endif
-```
+Another key Qt abstraction is `QSaveFile`, which is used for all file writes and edits to ensure atomic operations and prevent data corruption in case of interruptions.
 
-**Benefit**: All platform code in one file, easier to maintain.
+**Benefit**: Core logic remains platform-agnostic. The application relies on Qt to normalize paths and environment details across Windows, macOS, and Linux.
 
 ### 4.2 Limited Abstractions
 
-Only abstract what's actually different:
-- Data directory paths
+Only abstract what's genuinely different:
+- Data directory locations via `QStandardPaths`
 - Plugin file extensions (.dll, .dylib, .so)
-- Path separators (/, \)
+- Runtime environment checks via `QSysInfo`
 
 **Don't abstract**:
-- Standard library (same on all platforms with C++20)
+- Standard library (same on all platforms with C++23)
 - Qt6 (already cross-platform)
 - SQLite (already cross-platform)
 
@@ -654,121 +274,41 @@ Only abstract what's actually different:
 - Tags: alphanumeric + spaces, max 50 chars each
 
 ### 6.3 Access Control
-```cpp
-enum class Permission {
-  Read = 1,
-  Write = 2,
-  Delete = 4,
-  Share = 8
-};
 
-class AccessControl {
-  std::unordered_map<UserID, Permission> permissions;
-  bool canAccess(UserID, Permission) const;
-};
-```
+Access control is modeled with permission flags for read, write, delete, and share operations. The security layer evaluates user permissions against note access rules through a centralized access control service.
 
 ---
 
 ## 7. DEPLOYMENT STRUCTURE
 
-```
-AstraNotes/
-├── bin/
-│   └── AstraNotes          (Executable)
-├── lib/
-│   ├── plugins/
-│   │   ├── text-plugin.so/.dll
-│   │   ├── voice-plugin.so/.dll
-│   │   └── secure-plugin.so/.dll
-│   └── (bundled libraries)
-├── share/
-│   ├── config/
-│   │   ├── settings.yaml
-│   │   └── plugin-registry.json
-│   ├── resources/
-│   │   ├── icons/
-│   │   ├── themes/
-│   │   └── translations/
-│   └── docs/
-├── etc/
-│   └── astranotesrc        (System config)
-└── db/
-    └── default.db         (SQLite database - user writable)
-```
+The deployed application is organized into platform-specific executable and plugin directories, shared configuration and resource assets, optional system configuration, and a writable SQLite database.
+
+- `bin/`: application executable
+- `lib/plugins/`: runtime plugin modules
+- `share/config/`: default settings and plugin registry
+- `share/resources/`: icons, themes, and translations
+- `etc/`: system-level configuration
+- `db/`: user-writable SQLite database
 
 ---
 
 ## 8. DEPENDENCY MAP
 
-```
-External Dependencies:
-├─ Qt 6 (UI)
-├─ sqlite3 (Persistence)
-├─ OpenSSL 3.0 (Encryption)
-├─ Google Test (Testing)
-├─ spdlog (Logging)
-├─ nlohmann/json (Config serialization)
-└─ fmt (String formatting)
+External dependencies include Qt 6 for UI, SQLite for persistence, OpenSSL for encryption, Google Test for testing, spdlog for logging, nlohmann/json for config serialization, and fmt for string formatting.
 
-Internal Dependencies:
-├─ core/ (shared utilities)
-├─ model/ (domain objects)
-├─ repository/ (persistence)
-├─ service/ (business logic)
-├─ plugin/ (plugin system)
-├─ ui/ (UI layer)
-└─ test/ (test fixtures)
-```
+Internal module dependencies include the core utilities, domain model, repository layer, service layer, plugin system, UI layer, and test harness.
 
 ---
 
 ## 9. BUILD & DEPLOYMENT
 
 ### 9.1 CMake Target Structure
-```cmake
-# Libraries
-add_library(astranotescore SHARED ...)
-add_library(astranotesservice SHARED ...)
-add_library(astranotesui SHARED ...)
 
-# Plugins
-add_library(textplugin MODULE ...)
-add_library(voiceplugin MODULE ...)
-add_library(secureplugin MODULE ...)
-
-# Executable
-add_executable(AstraNotes src/main.cpp)
-target_link_libraries(AstraNotes astranotesui astranotesservice astranotescore)
-
-# Tests
-add_executable(AstraNotesTests test/test_main.cpp ...)
-enable_testing()
-add_test(NAME UnitTests COMMAND AstraNotesTests)
-```
+The build uses a layered CMake structure with shared libraries for core, service, and UI modules, module plugins for runtime extensions, a main executable, and a test executable. The build configuration exposes unit tests through CTest.
 
 ### 9.2 CI/CD Pipeline
-```yaml
-# GitHub Actions / GitLab CI
-stages:
-  - Build
-  - Test
-  - Package
-  - Deploy
-  
-Build:
-  platforms: [Linux, macOS, Windows]
-  
-Test:
-  - Unit tests (90% coverage)
-  - Integration tests
-  - Performance benchmarks
-  
-Package:
-  - AppImage (Linux)
-  - DMG (macOS)
-  - MSI/Portabledis (Windows)
-```
+
+The CI/CD pipeline includes build, test, package, and deploy stages for Linux, macOS, and Windows targets. It verifies unit tests, integration tests, and performance benchmarks before packaging platform-specific installers.
 
 ---
 

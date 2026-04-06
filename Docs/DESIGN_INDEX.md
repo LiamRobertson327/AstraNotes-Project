@@ -55,7 +55,7 @@ This comprehensive design package includes **4 detailed documents** plus this in
 1. Executive Summary - Requirements and goals
 2. High-level Architecture - Layered system overview
 3. Core Modules - Detailed layer descriptions
-4. Error Handling - Result<T> and error codes
+4. Error Handling - std::expected and error codes
 5. Memory Management - RAII, smart pointers
 6. Testing Architecture - Test pyramid and infrastructure
 7. Cross-platform - Abstraction layers
@@ -69,7 +69,7 @@ This comprehensive design package includes **4 detailed documents** plus this in
 - Plugin architecture system
 - Repository pattern for persistence
 - Service layer business logic
-- Error handling with Result<T>
+- Error handling with std::expected
 - RAII and smart pointers
 - 10K+ notes optimization
 - Comprehensive testing strategy
@@ -157,9 +157,9 @@ This comprehensive design package includes **4 detailed documents** plus this in
 - **How**: Controllers bridge Views and Services/Models
 - **Benefit**: Easier testing, better code organization
 
-### 4. **Result<T> Error Handling**
+### 4. **std::expected Error Handling**
 - **Why**: Railway-oriented programming, composable error handling
-- **How**: `Result<T>` wraps T or Error, forces handling
+- **How**: `std::expected<T, Error>` wraps T or Error, forces handling
 - **Benefit**: No uncaught exceptions, explicit error propagation
 
 ### 5. **Repository Pattern**
@@ -187,7 +187,7 @@ This comprehensive design package includes **4 detailed documents** plus this in
 ├─────────────────────────────────────────┤
 │ Controllers (Note, Search, Plugin)      │ Application Layer
 ├─────────────────────────────────────────┤
-│ Domain Model (Note, NoteCollection)     │ Domain Layer
+│ Domain Model (Note abstraction and typed note variants)     │ Domain Layer
 ├─────────────────────────────────────────┤
 │ Plugin System (IPlugin, PluginManager)  │ Plugin Layer
 ├─────────────────────────────────────────┤
@@ -195,7 +195,7 @@ This comprehensive design package includes **4 detailed documents** plus this in
 ├─────────────────────────────────────────┤
 │ Repository (INoteRepository, SQLite)    │ Persistence Layer
 ├─────────────────────────────────────────┤
-│ Core (Result, Error, Logger, Config)    │ Infrastructure
+│ Core (Error, Logger, Config, std::expected error handling)    │ Infrastructure
 ├─────────────────────────────────────────┤
 │ SQLite Database                         │ Data Layer
 └─────────────────────────────────────────┘
@@ -310,7 +310,7 @@ Week 14+   | ✅ Polish            (Docs, Release)
 ### This Week
 1. Set up development environment (CMake, dependencies)
 2. Create modular directory structure
-3. Implement core utilities (Result<T>, Error, Logger)
+3. Implement core utilities (Error, Logger, std::expected)
 4. Create basic unit tests
 
 ### Next Week
@@ -329,7 +329,7 @@ A: ~14 weeks (40-50 development days) depending on team size and experience.
 **Q: Can we parallelize development?**  
 A: Yes! After Phase 2, different teams can work on Services (Phase 3), Plugins (Phase 4), and UI (Phase 5) in parallel.
 
-**Q: Why Result<T> instead of exceptions?**  
+**Q: Why std::expected instead of exceptions?**  
 A: Explicit error handling, composable operations, no unwinding overhead—better for embedded systems.
 
 **Q: Can we swap SQLite for another database?**  

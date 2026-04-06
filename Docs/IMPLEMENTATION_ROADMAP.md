@@ -15,110 +15,55 @@ This guide provides a **step-by-step implementation plan** using the streamlined
 **Key Differences from Original:**
 - 4 services instead of 8 → Fewer files to implement
 - 3 test folders instead of 7 → Simpler test organization
-- Built-in plugins linked directly → No plugin loader complexity
-- Single Platform file → Easier cross-platform support
+- Dynamic plugin discovery via QPluginLoader → Runtime extensibility without recompilation
+- Qt platform abstractions (QStandardPaths, QSysInfo) → 100% platform-agnostic codebase
 - Fewer CMakeLists.txt files → Faster builds
 
 ---
 
-## Phase 1: Foundation & Core (Weeks 1-2)
+## Phase 1: Foundation (Weeks 1-2)
 
 ### Goal
-Set up the build system, core utilities, and domain model foundation.
+Migrate existing code into the finalized directory structure and set up the top-level CMake file to link modules correctly using C++23.
 
 ### Tasks
 
-#### 1.1 Simplify CMake Build System
+#### 1.1 Migrate Existing Code to New Folders
+**Migration Plan**:
+- Move `INote.h` and `IPlugin.h` to `src/api/`
+- Move `main.cpp` to `src/app/`
+- Move `Note.cpp/h` to `src/model/`
+- Move `mainwindow.cpp/h/ui` to `src/ui/`
+- Leave `src/plugin/`, `src/repository/`, `src/service/` empty for future implementation
+
+**Status**: 🔄 In Progress
+
+#### 1.2 Set Up Top-Level CMake File
 **File**: `CMakeLists.txt`
 
-**Key changes:**
-- Only 3-4 top-level `add_subdirectory()` calls (core, model, repository, service, plugin, ui, main)
-- Remove separate cmake/ folder (use find_package directly)
-- No per-file CMakeLists.txt (just per-layer)
+**Requirements**:
+- Set C++23 standard
+- Add subdirectories for `src/api/`, `src/app/`, `src/model/`, `src/ui/`
+- Link modules correctly (api, model, ui depend on app for main)
+- Ensure Qt6 integration
+- Prepare for future additions to plugin/, repository/, service/
 
-**Status**: 🔄 In Progress
+**Status**: ❌ Not Started
 
-#### 1.2 Implement Core Utilities
-**Files**:
-- `src/core/Result.h` - Template for success/failure
-- `src/core/Error.h/cpp` - Simple error codes
-- `src/core/Logger.h/cpp` - spdlog wrapper
-- `src/core/Config.h/cpp` - YAML parser
-- `src/core/Types.h` - Common typedefs
-- `src/core/Platform.h/cpp` - All platform code in ONE file with #ifdef
-
-**Key Code**:
-```cpp
-// Result.h - Simple and effective
-template<typename T>
-class Result {
-  std::variant<T, Error> value;
-public:
-  bool isOk() const { return std::holds_alternative<T>(value); }
-  T& unwrap() { return std::get<T>(value); }
-};
-
-// Platform.cpp - Single file, multiple implementations
-#ifdef _WIN32
-  std::string Platform::getDataDir() { /* Windows */ }
-#elif __APPLE__
-  std::string Platform::getDataDir() { /* macOS */ }
-#else
-  std::string Platform::getDataDir() { /* Linux */ }
-#endif
-```
-
-**Status**: 🔄 In Progress
-
-#### 1.3 Expand Note Model (No Changes to Original)
-**Files**:
-- Extend `include/Note.h` with metadata structs
-- Create `TextNote.h/cpp`, `VoiceNote.h/cpp`, `SecureNote.h/cpp`
-
-**Status**: ✅ Partially Done
-
-#### 1.4 Create NoteCollection
-**File**: `src/model/NoteCollection.h/cpp`
-
-```cpp
-class NoteCollection {
-  std::unordered_map<NoteID, std::shared_ptr<Note>> notes;
-  std::unordered_map<std::string, std::vector<NoteID>> tagIndex;
-  
-  void add(std::shared_ptr<Note> note);
-  void remove(const NoteID& id);
-  std::shared_ptr<Note> get(const NoteID& id) const;
-  size_t size() const { return notes.size(); }
-};
-```
-
-**Status**: 🔄 In Progress
-
-#### 1.5 Setup Test Infrastructure
-**Files**:
-- `tests/CMakeLists.txt` - Link Google Test
-- `tests/test_main.cpp` - Test runner
-- `tests/unit/test_note.cpp` - Basic note tests
-- `tests/unit/test_result.cpp` - Result<T> tests
-
-**3 folders instead of 7:**
-```
-tests/
-├── unit/           (All unit tests)
-├── integration/    (E2E workflows)
-└── perf/          (Performance + stress combined)
-```
+#### 1.3 Verify Build and Linking
+**Tasks**:
+- Build the migrated code
+- Ensure all includes and dependencies resolve correctly
+- Test basic application launch
 
 **Status**: ❌ Not Started
 
 ### Deliverables (Phase 1)
-- ✅ Modular CMake with 3-4 subdirs
-- ✅ Core utilities (Result, Error, Logger, Config, Platform)
-- ✅ Enhanced Note model
-- ✅ NoteCollection with indices
-- ✅ Basic unit test framework (20+ tests)
+- ✅ Code migrated to new directory structure
+- ✅ Top-level CMake file configured for C++23 and module linking
+- ✅ Successful build and basic application functionality
 
-### Effort: 3-4 days (faster than original 5-7)
+### Effort: 2-3 days
 
 ---
 
@@ -132,62 +77,14 @@ Implement database access layer optimized for 10K+ notes.
 #### 2.1 Design Database Schema
 **File**: `src/repository/schema/schema.sql`
 
-```sql
-CREATE TABLE IF NOT EXISTS notes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('text', 'voice', 'secure')),
-  format TEXT DEFAULT 'plain',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  is_encrypted BOOLEAN DEFAULT FALSE,
-  encryption_key_hash TEXT,
-  metadata JSON
-);
-
-CREATE INDEX idx_created ON notes(created_at);
-CREATE INDEX idx_type ON notes(type);
-CREATE INDEX idx_updated ON notes(updated_at);
-
-CREATE TABLE IF NOT EXISTS note_tags (
-  note_id INTEGER NOT NULL,
-  tag TEXT NOT NULL,
-  PRIMARY KEY(note_id, tag),
-  FOREIGN KEY(note_id) REFERENCES notes(id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_tag ON note_tags(tag);
-
-CREATE TABLE IF NOT EXISTS audit_log (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  note_id INTEGER,
-  action TEXT,
-  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(note_id) REFERENCES notes(id)
-);
-```
+The schema is designed for note metadata, encrypted content, note tags, version snapshots, and audit logging. Full-text search uses SQLite FTS5 indexes for fast title, body, and tag queries. Audit logs capture secure note actions and user events.
 
 **Status**: ✅ Designed
 
 #### 2.2 Implement Repository Interface
 **File**: `src/repository/INoteRepository.h`
 
-```cpp
-template<typename T>
-class IRepository {
-public:
-  virtual ~IRepository() = default;
-  virtual Result<std::shared_ptr<T>> get(const ID&) = 0;
-  virtual Result<std::vector<std::shared_ptr<T>>> getAll() = 0;
-  virtual Result<void> save(std::shared_ptr<T>) = 0;
-  virtual Result<void> update(std::shared_ptr<T>) = 0;
-  virtual Result<void> delete_item(const ID&) = 0;
-  virtual Result<size_t> count() = 0;
-};
-
-using INoteRepository = IRepository<Note>;
-```
+The repository interface exposes generic persistence operations for retrieval, listing, saves, updates, deletion, and counts. All persistence APIs are designed to return `std::expected` for explicit error handling.
 
 **Status**: 🔄 In Progress
 
@@ -197,41 +94,34 @@ using INoteRepository = IRepository<Note>;
 - `src/repository/SQLiteNoteRepository.cpp`
 
 **Key Features**:
-- Connection pooling (multi-threaded access)
-- Prepared statements (prevent SQL injection)
-- Batch operations (grouping in transactions)
-- Paging support (for large result sets)
+- Multi-threaded access and connection pooling
+- Prepared statements to avoid SQL injection
+- Batch operations for transaction grouping
+- Paging support for large result sets
 
-**Code Snippet**:
-```cpp
-class SQLiteNoteRepository : public INoteRepository {
-  std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db;
-  std::unordered_map<std::string, sqlite3_stmt*> stmtCache;
-  
-  Result<std::shared_ptr<Note>> get(const NoteID& id) override {
-    const char* sql = "SELECT * FROM notes WHERE id = ?";
-    auto stmt = getOrPrepare(sql);
-    sqlite3_bind_int64(stmt, 1, id);
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-      return Result<std::shared_ptr<Note>>(
-        std::make_shared<Note>(/* from row */)
-      );
-    }
-    return Result<std::shared_ptr<Note>>(
-      Error{ErrorCode::NotFound, "Note not found"}
-    );
-  }
-};
-```
+The SQLite repository implements the note persistence layer with prepared statements and explicit error propagation through `std::expected`. It is optimized for the note schema, indexing, and snapshots.
 
 **Performance Notes**:
 - Creates indices on frequently queried columns
-- Uses WAL mode for concurrent read access
+- Uses WAL mode for concurrent reads
 - Batches writes in transactions
 
 **Status**: 🔄 In Progress
 
-#### 2.4 Test SQLite Layer
+#### 2.4 Implement Two-Snapshot Rotation Logic
+**File**: `src/repository/VersionHistoryManager.h/cpp`
+
+Implement the version history snapshot rotation system that maintains up to two historical snapshots per note in the version_history table. When a third snapshot is created, the oldest snapshot for that note is automatically deleted.
+
+**Requirements**:
+- Store snapshots as blobs linked by note_id and ordered by timestamp
+- Enforce maximum two snapshots per note
+- Automatic cleanup of oldest snapshot when limit exceeded
+- Snapshot creation only when note is opened for editing or manually by user
+
+**Status**: ❌ Not Started
+
+#### 2.5 Test SQLite Layer
 **File**: `tests/integration/test_sqlite_repository.cpp`
 
 **Tests**:
@@ -240,6 +130,7 @@ class SQLiteNoteRepository : public INoteRepository {
 - ✅ Tag indexing
 - ✅ Query performance (< 100ms for 10K notes)
 - ✅ Concurrent access (thread safety)
+- ✅ Two-snapshot rotation behavior
 
 **Status**: ❌ Not Started
 
@@ -269,80 +160,33 @@ Implement business logic, encryption, search, and validation.
 #### 3.1 Implement NoteService
 **File**: `src/service/NoteService.h/cpp`
 
-```cpp
-class NoteService {
-  std::shared_ptr<INoteRepository> repo;
-  std::shared_ptr<ValidationService> validator;
-  std::shared_ptr<EncryptionService> encryptor;
-  
-public:
-  Result<std::shared_ptr<Note>> createNote(const NoteCreateRequest&);
-  Result<void> updateNote(const NoteUpdateRequest&);
-  Result<void> deleteNote(const NoteID&);
-  Result<std::shared_ptr<Note>> getNote(const NoteID&);
-};
-```
+NoteService coordinates repository access, encryption, and business logic. It should use `std::expected<T, Error>` for all public operations.
+
+**Sub-Task 3.1a: Integrate Inline Validation Logic**
+Validation logic is integrated directly into NoteService rather than implemented as a separate `ValidationService`. This keeps the service layer simpler while still enforcing title, content, and tag rules.
+
+Validations to enforce:
+- Title: 1-500 chars, no null bytes
+- Content: max 10 MB
+- Tags: alphanumeric + spaces
 
 **Status**: 🔄 In Progress
 
 #### 3.2 Implement EncryptionService
 **File**: `src/service/EncryptionService.h/cpp`
 
-```cpp
-class EncryptionService {
-  // AES-256-GCM via OpenSSL
-  Result<std::string> encrypt(
-    const std::string& plaintext,
-    const EncryptionKey& key
-  );
-  
-  Result<std::string> decrypt(
-    const std::string& ciphertext,
-    const EncryptionKey& key
-  );
-  
-  // Key derivation (PBKDF2)
-  EncryptionKey deriveKey(
-    const std::string& password,
-    const std::string& salt
-  );
-};
-```
+The encryption service provides AES-256-GCM encryption and decryption, along with password-based key derivation for secure notes. All encryption APIs return `std::expected` to capture errors explicitly.
 
 **Status**: ❌ Not Started
 
 #### 3.3 Implement SearchService
 **File**: `src/service/SearchService.h/cpp`
 
-```cpp
-class SearchService {
-  std::shared_ptr<INoteRepository> repo;
-  
-  // Full-text search via inverted index
-  std::vector<std::shared_ptr<Note>> search(
-    const std::string& query
-  );
-  
-  // Advanced query with filters
-  std::vector<std::shared_ptr<Note>> advancedSearch(
-    const SearchQuery& query
-  );
-};
-```
+The SearchService coordinates full-text note search through SQLite FTS5 and filters. It exposes search operations that accept query criteria and return results using `std::expected` on error.
 
 **Status**: 🔄 In Progress
 
-#### 3.4 Implement ValidationService
-**File**: `src/service/ValidationService.h/cpp`
-
-**Validations**:
-- Title: 1-500 chars, no null bytes
-- Content: max 10 MB
-- Tags: alphanumeric + spaces
-
-**Status**: ❌ Not Started
-
-#### 3.5 Write Service Tests
+#### 3.4 Write Service Tests
 **Files**: `tests/unit/service/*.cpp`
 
 **Coverage**:
@@ -355,10 +199,9 @@ class SearchService {
 **Status**: ❌ Not Started
 
 ### Deliverables
-- ✅ NoteService with business logic
+- ✅ NoteService with business logic and inline validation
 - ✅ EncryptionService (AES-256-GCM)
 - ✅ SearchService with full-text indexing
-- ✅ ValidationService with input sanitization
 - ✅ Comprehensive service tests (50+ tests)
 
 ### Estimated Effort: 5-7 days
@@ -375,57 +218,33 @@ Build extensible plugin architecture.
 #### 4.1 Define Plugin Interface
 **File**: `src/plugin/IPlugin.h`
 
-```cpp
-class IPlugin : public std::enable_shared_from_this<IPlugin> {
-public:
-  virtual std::string getName() const = 0;
-  virtual std::string getVersion() const = 0;
-  virtual bool initialize(const IPluginContext* ctx) = 0;
-  virtual bool shutdown() = 0;
-  virtual std::vector<std::string> getSupportedNoteTypes() const = 0;
-  virtual Result<std::string> processNote(const Note&) = 0;
-};
-
-class IPluginContext {
-public:
-  virtual ILogger* getLogger() = 0;
-  virtual IRepository* getRepository() = 0;
-  virtual IEncryptionService* getEncryption() = 0;
-};
-```
+Define the plugin interface with metadata, lifecycle hooks, supported note types, and operations for processing notes. Plugin APIs should return `std::expected` for error handling, and the plugin context provides logger and repository access.
 
 **Status**: ❌ Not Started
 
 #### 4.2 Implement PluginManager
 **File**: `src/plugin/PluginManager.h/cpp`
 
-```cpp
-class PluginManager {
-  std::unordered_map<std::string, std::shared_ptr<IPlugin>> plugins;
-  
-  Result<void> loadPlugin(const std::string& path);
-  Result<void> unloadPlugin(const std::string& name);
-  Result<std::shared_ptr<IPlugin>> getPlugin(const std::string& name);
-  std::vector<std::string> listLoadedPlugins() const;
-};
-```
+The plugin manager discovers and loads plugins at runtime using Qt's plugin loader. It tracks loaded plugin instances, exposes them to application components, and normalizes plugin lifecycle operations.
 
 **Status**: ❌ Not Started
 
-#### 4.3 Implement Built-In Plugins
+#### 4.3 Implement Built-In Plugins (Via QPluginLoader)
+
+Built-in plugins are discovered and loaded dynamically at runtime using QPluginLoader, keeping the core application decoupled from plugin implementations.
 
 **TextPlugin** (`src/plugin/builtin/TextPlugin.h/cpp`)
-- Plain text + markdown support
+- Plain text and markdown support
 - Export to HTML/PDF
 - Syntax highlighting
 
 **VoicePlugin** (`src/plugin/builtin/VoicePlugin.h/cpp`)
-- Audio recording/playback
+- Audio recording and playback
 - WAV/MP3 codec support
 - Transcription integration (optional)
 
 **SecurePlugin** (`src/plugin/builtin/SecurePlugin.h/cpp`)
-- Encryption wrapper
+- Encryption wrapper for secure notes
 - Access control lists
 - Audit logging
 
@@ -471,55 +290,31 @@ Implement Qt6-based GUI following MVC pattern.
 #### 5.2 Implement Main Window
 **File**: `src/ui/view/MainWindow.h/cpp`
 
-```cpp
-class MainWindow : public QMainWindow {
-  Q_OBJECT
-  
-  std::unique_ptr<NoteListView> listView;
-  std::unique_ptr<NoteEditorView> editorView;
-  std::unique_ptr<SearchView> searchView;
-  
-  void createMenuBar();
-  void createToolBars();
-  void createDockWidgets();
-};
-```
+The main window wraps the Qt application and composes the note list, editor, and search views. It exposes menu, toolbar, and dock widget structures for note workflows.
 
 **Features**:
-- Menu bar (File, Edit, View, Help)
-- Toolbar (New, Save, Delete, Search)
-- Dock widgets (Note list, Tags, Encryption)
-- Status bar (Mode, sync status, record duration)
+- Menu bar with File, Edit, View, and Help sections
+- Toolbar for new note, save, delete, and search actions
+- Dock widgets for note list, tag navigation, and encryption controls
+- Status bar for mode, sync state, and operation feedback
 
 **Status**: ❌ Not Started
 
 #### 5.3 Implement Views
 **Files**:
-- `src/ui/view/NoteListView.h/cpp` - QTableWidget for notes
-- `src/ui/view/NoteEditorView.h/cpp` - QPlainTextEdit + QTextEdit (markdown preview)
-- `src/ui/view/SearchView.h/cpp` - Search bar + filters
+- `src/ui/view/NoteListView.h/cpp` - note listing and selection
+- `src/ui/view/NoteEditorView.h/cpp` - editor with markdown preview
+- `src/ui/view/SearchView.h/cpp` - search controls and filters
 
 **Status**: ❌ Not Started
 
 #### 5.4 Implement Controllers
 **Files**:
-- `src/ui/controller/NoteController.h/cpp` - Handles note operations
-- `src/ui/controller/SearchController.h/cpp` - Search logic
-- `src/ui/controller/PluginController.h/cpp` - Plugin UI integration
+- `src/ui/controller/NoteController.h/cpp` - note operations
+- `src/ui/controller/SearchController.h/cpp` - search orchestration
+- `src/ui/controller/PluginController.h/cpp` - plugin UI integration
 
-```cpp
-class NoteController : public QObject {
-  Q_OBJECT
-  
-  Signal<void(std::shared_ptr<Note>)> noteCreated;
-  Signal<void(std::shared_ptr<Note>)> noteUpdated;
-  Signal<void(NoteID)> noteDeleted;
-  
-  void onCreateNoteClicked();
-  void onDeleteNoteClicked(const NoteID& id);
-  void onNoteDoubleClicked(const NoteID& id);
-};
-```
+Controllers use Qt signals and slots to communicate user actions from the UI to services and plugins without embedding business logic directly in view classes.
 
 **Status**: ❌ Not Started
 
@@ -548,26 +343,23 @@ class NoteController : public QObject {
 
 ---
 
-## Phase 6: Cross-Platform & Optimization (Weeks 12-13)
+## Phase 6: Platform Integration & Optimization (Weeks 12-13)
 
 ### Goal
-Add platform abstractions, optimize performance, and prepare for release.
+Integrate Qt platform abstractions for 100% platform-agnostic codebase and optimize performance.
 
 ### Tasks
 
-#### 6.1 Platform Abstraction Layer
-**Files**:
-- `src/platform/IPlatform.h` - Platform interface
-- `src/platform/windows/WindowsPlatform.h/cpp`
-- `src/platform/unix/UnixPlatform.h/cpp`
-- `src/platform/macos/MacOSPlatform.h/cpp`
+#### 6.1 Platform Integration via Qt Abstractions
+**Integration Points**:
+- Data directory locations via `QStandardPaths::AppDataLocation` and `QStandardPaths::AppLocalDataLocation`
+- System temp directory via `QStandardPaths::TempLocation`
+- Plugin search paths via `QStandardPaths::ApplicationsLocation` and dynamic plugin directory
+- Runtime environment checks via `QSysInfo::productType()`, `QSysInfo::kernelVersion()`, `QSysInfo::buildCpuArchitecture()`
+- File operations using `QSaveFile` for atomic writes and safe edits across all platforms
 
-**Abstractions**:
-- Data directory (config, database)
-- System temp directory
-- Plugin search paths
-- Native notifications
-
+**Design Principle**:
+No OS-specific code folders. All platform logic is unified through Qt abstractions, ensuring a 100% platform-agnostic codebase. Platform differences are handled transparently by Qt, not by custom conditional compilation.
 **Status**: ❌ Not Started
 
 #### 6.2 Performance Optimization
@@ -608,7 +400,8 @@ Add platform abstractions, optimize performance, and prepare for release.
 **Status**: ❌ Not Started
 
 ### Deliverables
-- ✅ Platform abstraction layer
+- ✅ Unified platform integration via Qt abstractions (QStandardPaths, QSysInfo, QSaveFile)
+- ✅ 100% platform-agnostic codebase with no OS-specific source folders
 - ✅ 20%+ performance improvement
 - ✅ Security audit report
 - ✅ Installation packages for all platforms
@@ -668,9 +461,9 @@ Finalize testing, documentation, and release preparation.
 
 ### Phase 1: Foundation ✅
 - [ ] Refactor CMake build system
-- [ ] Implement core utilities (Result, Error, Logger)
+- [ ] Implement core utilities (std::expected, Error, Logger)
 - [ ] Enhance Note model with metadata
-- [ ] Create NoteCollection container
+- [ ] Create SQLite-backed persistence adapter
 - [ ] Setup test infrastructure with Google Test
 
 ### Phase 2: Persistence ✅
@@ -678,13 +471,13 @@ Finalize testing, documentation, and release preparation.
 - [ ] Implement INoteRepository interface
 - [ ] Implement SQLiteNoteRepository
 - [ ] Create QueryBuilder DSL
+- [ ] Implement two-snapshot rotation logic for version history
 - [ ] Write repository integration tests
 
 ### Phase 3: Services ✅
-- [ ] Implement NoteService
+- [ ] Implement NoteService with inline validation
 - [ ] Implement EncryptionService (AES-256-GCM)
 - [ ] Implement SearchService with full-text indexing
-- [ ] Implement ValidationService
 - [ ] Write comprehensive service tests
 
 ### Phase 4: Plugins ✅
@@ -763,22 +556,7 @@ Finalize testing, documentation, and release preparation.
 
 ## Quick Start: Run Existing Code
 
-```bash
-# Navigate to project
-cd d:\Liams\ Files\SANTA\ CLARA\ UNIVERSITY\Graduate\SPRING\ 2026\CSEN\ 296B\AstraNotes-Project
-
-# Create build directory
-mkdir build && cd build
-
-# Configure (MSVC on Windows)
-cmake ..
-
-# Build
-cmake --build . --config Debug
-
-# Run
-bin/Debug/AstraNotes.exe
-```
+To run the current project, open the repository in your development environment, create a `build` directory, configure CMake, build the project, and launch the resulting executable.
 
 ---
 
@@ -789,7 +567,7 @@ bin/Debug/AstraNotes.exe
 3. **Start Phase 1**: 
    - Refactor CMakeLists.txt for modularity
    - Create `src/core/` directory
-   - Implement `Result<T>` template
+   - Design std::expected-based error handling
 4. **Setup Git Branching**: `feature/core-utilities`
 5. **Begin Unit Testing**: Setup Google Test integration
 
@@ -801,7 +579,7 @@ bin/Debug/AstraNotes.exe
 ✅ **Interface-Driven** - Depend on abstractions, not implementations  
 ✅ **RAII Compliance** - Smart pointers + RAII for safety  
 ✅ **Comprehensive Testing** - 80%+ coverage at all levels  
-✅ **Error Handling** - Railway-oriented programming with Result<T>  
+✅ **Error Handling** - Railway-oriented programming with std::expected  
 ✅ **Performance** - Optimized for 10K+ notes  
 ✅ **Security** - Encryption, validation, access control  
 ✅ **Documentation** - Architecture, API, user guides  

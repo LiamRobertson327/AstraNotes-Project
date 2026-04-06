@@ -135,7 +135,7 @@ Errors when loading, saving, or creating notes shall be logged and reported to t
 ## 7. CONSTRAINTS & ASSUMPTIONS
 
 ### Technical Constraints
-- Must compile with C++20 standard
+- Must compile with C++23 standard
 - Must work on Windows, macOS, Linux (same codebase)
 - SQLite as primary database (no external DB server)
 - Qt 6 for GUI framework

@@ -2,7 +2,6 @@
 
 ## 1. COMPLETE SYSTEM DIAGRAM
 
-```
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                      ASTRANOTESS APPLICATION                              │
 ├────────────────────────────────────────────────────────────────────────────┤
@@ -42,7 +41,7 @@
 │  │   └─────┘  └────┘  └──────────┘                                    │ │
 │  │                                                                      │ │
 │  │      ┌─────────────────────────────┐                               │ │
-│  │      │ NoteCollection              │                               │ │
+│  │      │ SQLite-backed note persistence              │                               │ │
 │  │      │ - Map<NoteID, Note*>        │                               │ │
 │  │      │ - TagIndex                  │                               │ │
 │  │      │ - Full-text search support  │                               │ │
@@ -106,7 +105,7 @@
 │  ┌─ INFRASTRUCTURE LAYER ────────────────────────────────────────────┐ │
 │  │                                                                      │ │
 │  │  ┌──────────┐  ┌────────────┐  ┌────────────┐  ┌──────────────┐  │ │
-│  │  │ Logger   │  │ Config     │  │ Result<T> │  │ Error       │  │ │
+│  │  │ Logger   │  │ Config     │  │ std::expected<T, Error> │  │ Error       │  │ │
 │  │  │(spdlog)  │  │(YAML)      │  │(Railway-  │  │(ErrorCode + │  │ │
 │  │  │          │  │            │  │ oriented) │  │ message)    │  │ │
 │  │  └──────────┘  └────────────┘  └────────────┘  └──────────────┘  │ │
@@ -133,13 +132,11 @@
 │  └──────────────────────────────────────────────────────────────────────┘ │
 │                                                                            │
 └────────────────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
 ## 2. CLASS HIERARCHY - NOTE TYPES
 
-```
      ┌─────────────────────────────────────────┐
      │          INote (Abstract)                │
      ├─────────────────────────────────────────┤
@@ -163,13 +160,11 @@
       │        │      │
    Markdown  Voice    Encrypted
    Support   Record   Storage
-```
 
 ---
 
 ## 3. PLUGIN ARCHITECTURE
 
-```
 ┌────────────────────────────────────────────────────────────────┐
 │                     Plugin System                               │
 ├────────────────────────────────────────────────────────────────┤
@@ -181,9 +176,9 @@
 │  │  + initialize(IPluginContext*): bool                │       │
 │  │  + shutdown(): bool                                 │       │
 │  │  + getSupportedNoteTypes(): vector<string>          │       │
-│  │  + processNote(const Note&): Result<string>         │       │
-│  │  + exportNote(const Note&, path): Result<void>      │       │
-│  │  + importNote(path): Result<unique_ptr<Note>>       │       │
+│  │  │ + processNote(const Note&): std::expected<std::string, Error>         │       │
+│  │  │ + exportNote(const Note&, path): std::expected<void, Error>      │       │
+│  │  │ + importNote(path): std::expected<std::unique_ptr<Note>, Error>       │       │
 │  └─────────────────────────────────────────────────────┘       │
 │                          ↑                                       │
 │         ┌────────────────┼────────────────┐                    │
@@ -201,11 +196,11 @@
 │                       │                                        │
 │  ┌────────────────────▼─────────────────────────────────┐    │
 │  │  PluginManager                                       │    │
-│  │  - loadPlugin(path): Result<void>                   │    │
-│  │  - unloadPlugin(name): Result<void>                 │    │
-│  │  - getPlugin(name): Result<IPlugin*>                │    │
+│  │  - loadPlugin(path): std::expected<void, Error>                   │    │
+│  │  - unloadPlugin(name): std::expected<void, Error>                 │    │
+│  │  - getPlugin(name): std::expected<IPlugin*, Error>                │    │
 │  │  - listLoadedPlugins(): vector<string>              │    │
-│  │  - executePlugin(name, note): Result<string>        │    │
+│  │  - executePlugin(name, note): std::expected<std::string, Error>        │    │
 │  └────────────────────┬─────────────────────────────────┘    │
 │                       │                                        │
 │  ┌────────────────────▼─────────────────────────────────┐    │
@@ -217,13 +212,11 @@
 │  └────────────────────────────────────────────────────────┘  │
 │                                                                  │
 └────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
 ## 4. DATABASE SCHEMA
 
-```
 ┌─────────────────────────────────────────────────┐
 │ notes                                            │
 ├─────────────────────────────────────────────────┤
@@ -258,13 +251,10 @@
                    │ timestamp (auto)    │
                    │ user_id (optional)  │
                    └─────────────────────┘
-```
 
----
 
 ## 5. MVC FLOW - DATA & CONTROL
 
-```
 User Interaction               View Layer
      │                            │
      │ (Click "New Note")         │
@@ -303,13 +293,11 @@ User Interaction               View Layer
      │
      ▼
   Display new note in list
-```
 
 ---
 
 ## 6. DEPENDENCY INJECTION FLOW
 
-```
 Application Entry Point (main.cpp)
      │
      ▼
@@ -342,13 +330,11 @@ Application Entry Point (main.cpp)
      └─ Plugins
         │ Fetch: IPluginContext (provided by manager)
         │ Use: context->getRepository()->getNote(id)
-```
 
 ---
 
 ## 7. ERROR HANDLING FLOW
 
-```
 Operation Request
      │
      ▼
@@ -356,7 +342,7 @@ ValidationService::validate(input)
      │
      ├─ Valid? → Continue
      │
-     └─ Invalid? → Return Result<void>
+     └─ Invalid? → Return std::expected<void, Error>
                        Error{InvalidInput, "Title too long"}
                        │
                        ▼
@@ -372,11 +358,11 @@ ValidationService::validate(input)
                                     │
                                     ├─ Logic OK? → Repository::save()
                                     │                    │
-                                    │                    ├─ DB OK? → Return Result<Note>
+                                    │                    ├─ DB OK? → Return std::expected<Note, Error>
                                     │                    │
                                     │                    └─ DB Error? → Error{StorageError, "..."}
                                     │
-                                    └─ Logic Error? → Return Result<Note>
+                                    └─ Logic Error? → Return std::expected<Note, Error>
                                                       Error{...}
                                                            │
                                                            ▼
@@ -385,13 +371,11 @@ ValidationService::validate(input)
                                                            ├─ isOk()? → Update UI
                                                            │
                                                            └─ isErr()? → Show dialog
-```
 
 ---
 
 ## 8. MEMORY MANAGEMENT - SMART POINTER USAGE
 
-```
 ┌─────────────────────────────────────────────────────────────┐
 │              Smart Pointer Strategy                          │
 ├─────────────────────────────────────────────────────────────┤
@@ -420,13 +404,11 @@ Example:
 │ // note still referenced; won't be deleted      │
 │ // until both cache and all local copies gone   │
 └──────────────────────────────────────────────────┘
-```
 
 ---
 
 ## 9. PERFORMANCE OPTIMIZATION TARGETS
 
-```
 ┌──────────────────────────────────────────────────────────┐
 │  Operation           │  Target    │  Implementation     │
 ├──────────────────────────────────────────────────────────┤
@@ -440,13 +422,11 @@ Example:
 │  Memory (10K notes)  │  <200MB    │  Compression +     │
 │                      │            │  LRU cache         │
 └──────────────────────────────────────────────────────────┘
-```
 
 ---
 
 ## 10. TESTING PYRAMID
 
-```
                       ▲
                      ╱ ╲
                     ╱   ╲
@@ -470,40 +450,31 @@ Targets:
 - Performance: 10K+ note benchmarks
 - UI: Critical user paths
 - Stress: Concurrent access, memory limits
-```
 
 ---
 
 ## 11. DEPLOYMENT TARGETS
 
-```
-Windows
-├─ build/x64/Release/AstraNotes.exe
-├─ build/x64/Release/plugins/
-│  ├─ TextPlugin.dll
-│  ├─ VoicePlugin.dll
-│  └─ SecurePlugin.dll
-├─ MSI Installer (via WiX)
-└─ Portable ZIP
+AstraNotes is deployed as a portable folder structure for cross-platform compatibility. All platforms follow the same directory layout with platform-specific binaries and plugins.
 
-macOS
-├─ build/arm64/Release/AstraNotes.app
-├─ build/arm64/Release/plugins/
-│  ├─ TextPlugin.dylib
-│  ├─ VoicePlugin.dylib
-│  └─ SecurePlugin.dylib
-├─ DMG Installer
-└─ Notarized for security
+Portable Folder Structure (All Platforms)
 
-Linux
-├─ build/x64/Release/astranotess
-├─ build/x64/Release/lib/
-│  ├─ libtextplugin.so
-│  ├─ libroiceplugin.so
-│  └─ libsecureplugin.so
-├─ AppImage (single executable)
-└─ Debian/RPM packages
-```
+AstraNotes/
+├─ AstraNotes (executable: .exe on Windows, .app on macOS, binary on Linux)
+├─ plugins/
+│  ├─ TextPlugin (dynamic library: .dll, .dylib, .so)
+│  └─ VoicePlugin (dynamic library: .dll, .dylib, .so)
+├─ resources/
+│  ├─ config.yaml
+│  ├─ icons/
+│  ├─ styles/
+│  └─ translations/
+├─ db/
+│  └─ notes.db (user SQLite database)
+└─ README.txt (quick start guide)
+
+Deployment Note:
+This portable structure simplifies distribution across Windows, macOS, and Linux. Users extract the folder and run the AstraNotes executable. All plugins are discovered dynamically at runtime from the plugins/ directory using QPluginLoader, ensuring consistent behavior across all platforms.
 
 ---
 
@@ -511,15 +482,16 @@ Linux
 
 | Feature | Location |
 |---------|----------|
-| **Domain Model** | `src/model/Note.h`, `TextNote.h`, `VoiceNote.h`, `SecureNote.h` |
-| **Data Access** | `src/repository/INoteRepository.h``SQLiteNoteRepository.h` |
+| **Domain Model** | `src/model/Note.h` |
+| **Plugin Interface** | `src/api/IPlugin.h` |
+| **Data Access** | `src/repository/INoteRepository.h`, `SQLiteNoteRepository.h` |
 | **Business Logic** | `src/service/NoteService.h`, `EncryptionService.h`, `SearchService.h` |
-| **Plugins** | `src/plugin/IPlugin.h`, `PluginManager.h`, `builtin/*.h` |
-| **UI** | `src/ui/view/*.h`, `src/ui/controller/*.h`, `src/ui/model/*.h` |
-| **Utilities** | `src/core/Result.h`, `Error.h`, `Logger.h`, `Config.h` |
-| **Tests** | `tests/unit/*`, `tests/integration/*`, `tests/performance/*` |
-| **Database** | `src/repository/schema/schema.sql` |
-| **Documentation** | `docs/`, `ARCHITECTURE.md`, `PROJECT_STRUCTURE.md` |
+| **Plugin Manager** | `src/plugin/PluginManager.h` |
+| **UI** | `src/ui/MainWindow.h`, `src/ui/view/*.h`, `src/ui/controller/*.h` |
+| **Core Utilities** | `src/api/`, `src/app/main.cpp` |
+| **Tests** | `tests/unit/*`, `tests/integration/*`, `tests/perf/*` |
+| **Database Schema** | `src/repository/schema/schema.sql` |
+| **Documentation** | `docs/`, `ARCHITECTURE.md`, `PROJECT_STRUCTURE.md`, `IMPLEMENTATION_ROADMAP.md` |
 
 ---
 

@@ -181,9 +181,9 @@ This document specifies the initial functional, non-functional, and security/rel
   - getName(), getVersion(), getAuthor()
   - getSupportedNoteTypes(), getSupportedMimeTypes()
   - initialize(context), shutdown()
-  - processNote(note) → Result<string>
-  - exportNote(note, path) → Result<void>
-  - importNote(path) → Result<Note>
+  - processNote(note) → std::expected<std::string, Error>
+  - exportNote(note, path) → std::expected<void, Error>
+  - importNote(path) → std::expected<Note, Error>
 - Built-in plugins (3):
   - TextPlugin: Plain text + markdown support
   - VoicePlugin: Audio recording/playback
@@ -435,7 +435,7 @@ This document specifies the initial functional, non-functional, and security/rel
 
 **Details**:
 - **Error Handling**:
-  - Result<T> type for all operations
+  - `std::expected<T, Error>` for all operations
   - No uncaught exceptions
   - Meaningful error messages (not technical jargon for users)
   - User-facing errors logged with context
@@ -541,7 +541,7 @@ This document specifies the initial functional, non-functional, and security/rel
 ## 7. CONSTRAINTS & ASSUMPTIONS
 
 ### Technical Constraints
-- Must compile with C++20 standard
+- Must compile with C++23 standard
 - Must work on Windows, macOS, Linux (same codebase)
 - SQLite as primary database (no external DB server)
 - Qt 6 for GUI framework
