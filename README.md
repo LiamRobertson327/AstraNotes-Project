@@ -17,9 +17,26 @@ AstraNotes is a high-performance, secure, and cross-platform note-taking applica
 * Will be completed as the project is implemented
 ```
 AstraNotes
-├── src/                 
+├──  src/
+│      ├──  main.cpp
+│      ├──  mainwindow.cpp
+│      └──  Note.cpp                
+│ 
+├──  include/
+│      ├──  mainwindow.h
+│      └──  Note.h
 │
-└── README.md
+├──  Docs/
+│ 
+├──  tests/
+│ 
+├──  ui/
+│      └──  mainwindow.ui
+│ 
+├──  .gitignore
+├──  CmakeList.txt
+├──  LISCENSE
+└──  README.md
 ```
 
 ## 🙋🏻‍♂️ How to Use
