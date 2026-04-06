@@ -1,9 +1,9 @@
 #include <QApplication>
-#include "mainwindow.h"
+#include "ui/mainwindow.h"
 
 #include <iostream>
 #include <vector>
-#include "Note.h"
+#include "model/Note.h"
 
 int main(int argc, char *argv[]) {
 

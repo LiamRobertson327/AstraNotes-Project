@@ -1,4 +1,4 @@
-#include "Note.h"
+#include "model/Note.h"
 #include <iostream>
 #include <format>
 
