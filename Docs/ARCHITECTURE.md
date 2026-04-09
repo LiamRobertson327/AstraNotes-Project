@@ -159,6 +159,8 @@ The CacheManager provides an in-memory LRU cache for recently accessed notes. It
 
 The UI layer follows the MVC paradigm, with view components for windows and dialogs, controllers for user interaction, and Qt model adapters for application state. The model layer is backed by lightweight note summaries (containing ID, title, and metadata) rather than full persisted note objects, enabling lazy loading of content to maintain performance for large note collections.
 
+- Autosave is implemented using a debounced `QTimer` set to 500ms. Each keystroke resets the timer, and persistence is committed only after 500ms of inactivity to avoid excessive disk I/O.
+
 #### **3.5.2 UI Framework Choice**
 - **Primary**: Qt 6 (cross-platform, mature, best for desktop)
 - **Alternative**: wxWidgets (lighter weight)
@@ -230,9 +232,9 @@ Test infrastructure is built around fixtures and mockable repository interfaces,
 
 Instead of custom OS-specific files, the application relies on Qt's platform abstraction APIs for data directories, plugin discovery paths, and runtime environment checks. This keeps core logic platform-agnostic and reduces OS-specific branching.
 
-Another key Qt abstraction is `QSaveFile`, which is used for all file writes and edits to ensure atomic operations and prevent data corruption in case of interruptions.
+Persistent data is stored in SQLite via `QSqlDatabase` and `QSqlQuery`; the application writes note records into tables rather than filesystem files. `QSaveFile` is not required for core persistence, and is only needed if the application exports separate filesystem artifacts such as backups or user exports.
 
-**Benefit**: Core logic remains platform-agnostic. The application relies on Qt to normalize paths and environment details across Windows, macOS, and Linux.
+**Benefit**: Core logic remains platform-agnostic while preserving atomic persistence through SQLite transactions and Qt database APIs across Windows, macOS, and Linux.
 
 ### 4.2 Limited Abstractions
 
@@ -316,29 +318,35 @@ The CI/CD pipeline includes build, test, package, and deploy stages for Linux, m
 
 ### Phase 1: Foundation (Weeks 1-2)
 - [ ] Set up module structure & CMake
-- [ ] Implement repository layer (SQLite)
 - [ ] Create Note domain model
-- [ ] Basic CRUD operations
+- [ ] Establish core interfaces and utilities
+- [ ] Basic repository abstractions
 
-### Phase 2: Services (Weeks 3-4)
+### Phase 2: Persistence (Weeks 3-4)
+- [ ] Implement repository layer (SQLite)
+- [ ] Database schema for notes, metadata, tags, versions
+- [ ] WAL mode and crash recovery configuration
+- [ ] Repository tests for CRUD and versioning
+
+### Phase 3: Services (Weeks 5-6)
 - [ ] NoteService with business logic
 - [ ] EncryptionService
 - [ ] ValidationService
 - [ ] Unit tests (70% coverage)
 
-### Phase 3: Plugin System (Weeks 5-6)
+### Phase 4: Plugin System (Weeks 7-8)
 - [ ] IPlugin interface & manager
 - [ ] TextPlugin implementation
 - [ ] VoicePlugin skeleton
 - [ ] SecurePlugin with encryption
 
-### Phase 4: UI & Integration (Weeks 7-9)
+### Phase 5: UI & Integration (Weeks 9-10)
 - [ ] Qt GUI framework
 - [ ] NoteController & MVC wiring
 - [ ] Search & filtering UI
 - [ ] Integration tests
 
-### Phase 5: Performance & Polish (Weeks 10-12)
+### Phase 6: Platform Integration (Weeks 11-12)
 - [ ] Performance profiling & optimization
 - [ ] Security audit
 - [ ] Cross-platform testing
