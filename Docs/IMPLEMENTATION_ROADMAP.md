@@ -6,6 +6,17 @@
 
 > This roadmap reflects the SIMPLIFIED architecture. 50% fewer tasks, same end result.
 
+## Realignment Update (April 25, 2026)
+
+Execution should follow these now-stable decisions:
+
+- Note type is runtime `typeId` (plugin-provided string), not compile-time enum.
+- Current model uses Qt-native types (`QString`, `QDateTime`, `qint64`) and SQLite-assigned IDs.
+- Search behavior is split between in-note UI search and repository-backed global search; where service ownership differs across docs, use `NoteService` responsibilities from `UML_STARTER_DIAGRAMS.md` as current target.
+- Delete lifecycle is Trash -> 14-day retention -> auto purge.
+
+Roadmap status markers in this document may lag active coding progress; treat phase ordering as authoritative, not individual checkbox completion text.
+
 ---
 
 ## Overview

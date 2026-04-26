@@ -1,28 +1,32 @@
 #include "model/Note.h"
-#include <iostream>
-#include <format>
+#include <QDebug>       //Provides an output stream for debugging information.
 
-int Note::nextId = 1;
-
-Note::Note(NoteType noteType, std::string noteTitle) 
-    : type(noteType), title(noteTitle){
-
-    this->id = nextId++;
-    this->last_modified = std::chrono::system_clock::now();
+Note::Note(QString noteTypeId, QString noteTitle)
+    : typeId(std::move(noteTypeId)), title(std::move(noteTitle)) {
+    this->lastModified = QDateTime::currentDateTimeUtc();
 }
 
-void Note::setTitle(const std::string& new_title){
-    title = new_title;
-    last_modified = std::chrono::system_clock::now();
+void Note::setId(qint64 newId) {
+    id = newId;
 }
 
-void Note::setContent(const std::string& newContent){
+void Note::setTitle(const QString& newTitle) {
+    title = newTitle;
+    lastModified = QDateTime::currentDateTimeUtc();
+}
+
+void Note::setContent(const QString& newContent) {
     content = newContent;
-    last_modified = std::chrono::system_clock::now();
+    lastModified = QDateTime::currentDateTimeUtc();
 }
 
-void Note::display() const{
-    std::cout << "[" << id << "] " << title << "\n"
-            << "Last Modified: " << std::format("{:%F %R}", last_modified) << "\n"
-            << "Content: " << content << std::endl;
+void Note::setTypeId(const QString& newTypeId) {
+    typeId = newTypeId;
+    lastModified = QDateTime::currentDateTimeUtc();
+}
+
+void Note::display() const {
+    qInfo().noquote() << "[" + QString::number(id) + "] " + title;
+    qInfo().noquote() << "Last Modified:" << lastModified.toString(Qt::ISODate);
+    qInfo().noquote() << "Content:" << content;
 }

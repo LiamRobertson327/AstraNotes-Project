@@ -1,5 +1,15 @@
 # AstraNotes: Requirements Specification
 
+## Status Note (April 25, 2026)
+
+This file is the historical extended baseline. For implementation planning, use `REQUIREMENTS_UPDATED.md` together with the revised precision set in `INITIAL_REQUIREMENTS.md`.
+
+If requirement text conflicts across files, prioritize:
+
+1. `REQUIREMENTS_UPDATED.md`
+2. revised entries in `INITIAL_REQUIREMENTS.md`
+3. `REQUIREMENTS.md` (this file) only as background context
+
 **Project**: AstraNotes - High-Performance Note-Taking Application  
 **Version**: 1.0  
 **Date**: April 2, 2026  

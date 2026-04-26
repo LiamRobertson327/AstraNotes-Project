@@ -1,5 +1,16 @@
 # AstraNotes: Simplified Project Structure
 
+## Alignment Note (April 25, 2026)
+
+This file contains target-state structure plus aspirational module details. For implementation decisions, prioritize:
+
+1. `src/` actual tree in the repository
+2. `REQUIREMENTS_UPDATED.md` + `INITIAL_REQUIREMENTS.md`
+3. `UML_STARTER_DIAGRAMS.md`
+4. `IMPLEMENTATION_ROADMAP.md`
+
+Current implemented baseline is intentionally lean (for example, `Note` model + Qt app skeleton), while repository/service/plugin modules are still being staged.
+
 ## Directory Layout (Streamlined for Rapid Development)
 
 The simplified project layout is organized by architectural layer, with a shallow source tree and clear separation of responsibilities:

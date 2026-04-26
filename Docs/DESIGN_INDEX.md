@@ -4,6 +4,20 @@
 **Project**: AstraNotes - High-Performance C++20 Note-Taking Application  
 **Version**: Architecture v1.0  
 
+## Documentation Consistency Baseline (April 25, 2026)
+
+To reduce drift, use this precedence when documents disagree:
+
+1. `REQUIREMENTS_UPDATED.md` + `INITIAL_REQUIREMENTS.md` (product requirements and constraints)
+2. `UML_STARTER_DIAGRAMS.md` (behavioral and structural modeling baseline)
+3. `ARCHITECTURE.md` (implementation architecture)
+4. `IMPLEMENTATION_ROADMAP.md` (phase execution plan)
+5. `USER_STORIES.md` and `BACKLOG.md` (planning and prioritization)
+
+Legacy notes:
+- Some sections below still describe earlier alternatives (for example, typed note hierarchies and broader service splits).
+- Treat this file as a navigator, not the implementation source of truth.
+
 ---
 
 ## 📚 Documentation Structure
@@ -15,7 +29,7 @@ This comprehensive design package includes **4 detailed documents** plus this in
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Complete system design, patterns, layers | Architects, Senior Devs | ~5,000 words |
 | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | File organization, module layout | All developers | ~4,000 words |
 | [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) | Phase-by-phase tasks, timeline | Project managers, Leads | ~3,000 words |
-| [VISUAL_REFERENCE.md](VISUAL_REFERENCE.md) | Diagrams, class hierarchies, flows | Visual learners | ~2,000 words |
+| [legacy/VISUAL_REFERENCE.md](legacy/VISUAL_REFERENCE.md) | Legacy diagrams, class hierarchies, flows | Visual learners | ~2,000 words |
 | **INDEX.md** (this file) | Navigation & quick reference | Everyone | - |
 
 ---
@@ -26,7 +40,7 @@ This comprehensive design package includes **4 detailed documents** plus this in
 
 **🏗️ Software Architect**
 → Start with [ARCHITECTURE.md](ARCHITECTURE.md)  
-→ Then review [VISUAL_REFERENCE.md](VISUAL_REFERENCE.md) for diagrams
+→ Then review [legacy/VISUAL_REFERENCE.md](legacy/VISUAL_REFERENCE.md) for historical diagrams
 
 **👨‍💼 Project Manager**
 → Start with [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)  
@@ -34,7 +48,7 @@ This comprehensive design package includes **4 detailed documents** plus this in
 
 **💻 Developer (New to project)**
 → Start with [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)  
-→ Then [VISUAL_REFERENCE.md](VISUAL_REFERENCE.md) for system overview
+→ Then [legacy/VISUAL_REFERENCE.md](legacy/VISUAL_REFERENCE.md) for historical system overview
 
 **🔧 Developer (Starting implementation)**
 → Start with [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) Phase 1  
@@ -121,7 +135,7 @@ This comprehensive design package includes **4 detailed documents** plus this in
 
 ---
 
-### VISUAL_REFERENCE.md: Diagrams & Flows
+### legacy/VISUAL_REFERENCE.md: Diagrams & Flows (Legacy)
 
 **Visual Assets:**
 1. Complete System Diagram - All layers and modules

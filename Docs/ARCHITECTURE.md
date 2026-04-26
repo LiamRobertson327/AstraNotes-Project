@@ -39,13 +39,13 @@ The architecture is organized into seven simplified functional layers:
 - GUI Layer: Qt6-based MVC views and controllers for user interaction.
 - Application Models: Qt model adapters and domain objects mapped to persistent storage.
 - Plugin System Layer: runtime-discovered plugins managed by a plugin loader.
-- Service Layer: NoteService, SearchService, EncryptionService, and CacheManager.
+- Service Layer: NoteService (CRUD + validation + search), EncryptionService, and CacheManager.
 - Persistence Layer: repository interfaces backed by an optimized SQLite implementation.
 - Infrastructure Layer: `std::expected<T, Error>` for explicit error handling, logging, configuration, and Qt platform utilities.
 - SQLite Database: a WAL-mode storage engine with full-text search and version snapshot support.
 
 **Key Simplifications:**
-- ✅ **4 services instead of 8** - Validation integrated into NoteService, Backup/Sync/Export removed (handled by plugins)
+- ✅ **3 services instead of 8** - Validation and search integrated into NoteService, Backup/Sync/Export removed (handled by plugins)
 - ✅ **Dynamic Qt plugin loading** - Discover plugins at runtime with `QPluginLoader`
 - ✅ **Qt platform abstractions** - Use `QStandardPaths` and `QSysInfo` instead of custom platform code
 - ✅ **3 test folders** - Unit, Integration, Performance (combined with stress tests)
@@ -121,27 +121,23 @@ The persistence layer supports composable query objects with predicates, sort or
 
 ---
 
-### 3.4 SERVICE LAYER (Simplified to 4 Core Services)
+### 3.4 SERVICE LAYER (Simplified to 3 Core Services)
 
-#### **3.4.1 NoteService (Combines CRUD + Validation)**
+#### **3.4.1 NoteService (Combines CRUD + Validation + Search)**
 
-The NoteService performs note creation, retrieval, update, and deletion through the repository interface. It also validates titles, content, and tags inline rather than using a separate validation service.
+The NoteService performs note creation, retrieval, update, deletion, and full-text search through the repository interface. It validates titles, content, and tags inline rather than using separate validation or search services.
 
-**Removed**: Separate ValidationService (integrated here)
-
-#### **3.4.2 SearchService (Full-Text Only)**
-
-The SearchService uses the repository's full-text search capabilities to perform note searches. It maintains search-related state and defers text indexing to the persistence layer rather than implementing a separate query builder abstraction.
+**Removed**: Separate ValidationService and SearchService (integrated here)
 
 **Removed**: QueryBuilder DSL (simple WHERE clauses only)
 
-#### **3.4.3 EncryptionService (AES-256-GCM Only)**
+#### **3.4.2 EncryptionService (AES-256-GCM Only)**
 
 The EncryptionService provides authenticated AES-256-GCM encryption and decryption for secure note payloads. Key derivation is handled through a simple password-based scheme, with no separate key management service.
 
 **Simplified**: No key management system (simple derivation only)
 
-#### **3.4.4 CacheManager (LRU Caching Only)**
+#### **3.4.3 CacheManager (LRU Caching Only)**
 
 The CacheManager provides an in-memory LRU cache for recently accessed notes. It is designed to reduce repeated database reads while ensuring the repository remains the source of truth. All cache operations use `std::expected` where errors may occur.  The Cache must be invalidated when a Snapshot is restored to prevent showing old data.
 
@@ -150,6 +146,7 @@ The CacheManager provides an in-memory LRU cache for recently accessed notes. It
 - ❌ SyncService (future feature)
 - ❌ BackupService (repository responsibility)
 - ❌ ValidationService (integrated into NoteService)
+- ❌ SearchService (integrated into NoteService)
 
 ---
 
@@ -330,8 +327,8 @@ The CI/CD pipeline includes build, test, package, and deploy stages for Linux, m
 
 ### Phase 3: Services (Weeks 5-6)
 - [ ] NoteService with business logic
+- [ ] Integrated validation and search in NoteService
 - [ ] EncryptionService
-- [ ] ValidationService
 - [ ] Unit tests (70% coverage)
 
 ### Phase 4: Plugin System (Weeks 7-8)

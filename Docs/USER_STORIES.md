@@ -27,7 +27,7 @@ This document contains 8 user stories derived from the initial requirement set, 
 ### Story 1: Create and Edit Notes with Save Options
 **As a** user, **I want** to create and edit notes with manual save and auto-save features, including title and body, **so that** I can efficiently manage my notes without losing work.
 
-**Mapped to Phase**: Phase 2 (Persistance) & Phase 5 (UI & Integration) - Core editing functionality.
+**Mapped to Phase**: Phase 2 (Persistence) & Phase 5 (UI & Integration) - Core editing functionality.
 **Acceptance Criteria**:
 - Notes can be created with a title (max 500 chars, no null bytes) and body (max 10 MB).
 - Manual save and auto-save options are available, with auto-save implemented as a debounced 500ms `QTimer` that resets on each keystroke.
@@ -70,7 +70,7 @@ This document contains 8 user stories derived from the initial requirement set, 
 ### Story 4: Search Across All Saved Notes
 **As a** user, **I want** to search for header data or titles across all my saved notes, **so that** I can find relevant notes quickly from my collection.
 
-**Mapped to Phase**: Phase 3 (Services) - SearchService implementation.
+**Mapped to Phase**: Phase 3 (Services) - NoteService/repository-backed global search implementation.
 **Acceptance Criteria**:
 - Search uses SQLite indexes on note titles, header metadata, and tags rather than loading full note bodies into memory.
 - Search supports partial matches and returns results with relevance ranking based on title and metadata.
@@ -79,7 +79,7 @@ This document contains 8 user stories derived from the initial requirement set, 
 - Errors are logged and reported (no crashes).
 - Feature is modular, allowing plugins to extend search capabilities.
 - Security: Search respects encryption (private notes not searchable in plain text).
-- Tested via unit tests for SearchService and integration tests for database queries.
+- Tested via unit tests for global search logic and integration tests for database queries.
 
 ### Story 5: Persistent Storage of Notes
 **As a** user, **I want** my notes to be persistently stored so they are not lost, **so that** I can access them across application sessions.

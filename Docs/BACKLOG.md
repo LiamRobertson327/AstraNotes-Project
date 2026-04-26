@@ -31,5 +31,3 @@ This backlog lists each user story with its assigned priority and story points.
 - **High priority**: 6 stories
 - **Medium priority**: 2 stories
 - **Low priority**: 0 stories
-</content>
-<parameter name="filePath">d:\Liams Files\SANTA CLARA UNIVERSITY\Graduate\SPRING 2026\CSEN 296B\AstraNotes-Project\Docs\BACKLOG.md

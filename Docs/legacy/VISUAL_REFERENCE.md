@@ -1,5 +1,12 @@
 # AstraNotes: Visual Architecture Reference
 
+## Alignment Note (April 25, 2026)
+
+This file is a conceptual visual reference and includes legacy alternatives.
+
+- Authoritative diagrams for current implementation planning are in `UML_STARTER_DIAGRAMS.md`.
+- Where this file conflicts with current docs (for example, extra services, typed note hierarchy variants, or repository variants), prefer `UML_STARTER_DIAGRAMS.md` and `ARCHITECTURE.md`.
+
 ## 1. COMPLETE SYSTEM DIAGRAM
 
 ┌────────────────────────────────────────────────────────────────────────────┐
