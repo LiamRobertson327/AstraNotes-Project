@@ -130,19 +130,159 @@ This document contains 8 user stories derived from the initial requirement set, 
 
 **Mapped to Phase**: Phase 3 (Services) - NoteService deletion logic.
 **Acceptance Criteria**:
-- Single or bulk deletion supported via NoteService.
-- Deletions are confirmed and reversible via versioning (if snapshots exist).
-- Snapshots for deleted notes are retained only for a limited lifetime (for example, 14 days) before being purged.
-- Database operations use transactions for reliability.
-- Errors are logged and reported (no crashes).
-- Feature is modular, integrated with UI for bulk operations.
-- Security: Deletions are audited in immutable logs.
-- Performance: Bulk deletions complete efficiently for large selections.
-- Tested via unit tests for deletion logic and integration tests for UI workflows.
 
----
 
 ## Summary
+
+### Story 9: Plugin Validation and Missing-Plugin Fallback
+**As a** developer/system, **I want** plugins to be validated on load and missing plugins to be handled gracefully, **so that** an invalid or missing plugin does not crash the application or leave notes inaccessible.
+
+**Mapped to Phase**: Phase 4 (Plugin System) - Plugin validation and error handling.
+**Acceptance Criteria**:
+- On plugin load, the PluginManager validates plugin metadata (format ID, name, serialization functions).
+- Invalid plugins fail gracefully with a logged error and a user notification.
+- If a note's plugin is missing or fails, the note is marked as "unsupported/read-only" until a compatible plugin becomes available.
+- User is notified of missing plugins without blocking note access.
+- Application does not crash if a plugin is missing or malformed.
+- Feature is modular, integrated into plugin lifecycle management.
+- Security: Plugin validation prevents execution of untrusted or malformed plugins.
+- Performance: Validation completes during plugin discovery phase.
+- Tested via unit tests for plugin validation and integration tests for missing-plugin scenarios.
+
+### Story 10: In-Note Search with Match Count and Navigation
+**As a** user, **I want** to search within a note and see the total match count, current match index, and navigate through matches with next/previous buttons, **so that** I can efficiently locate and review all instances of a search term.
+
+**Mapped to Phase**: Phase 5 (UI & Integration) - Enhanced in-note search UI.
+**Acceptance Criteria**:
+- Search box displays the current match index and total match count (e.g., "3 of 15").
+- Next and Previous navigation buttons highlight the next or previous match in sequence.
+- Navigating past the last match wraps to the first match; navigating before the first wraps to the last.
+- If no matches are found, the UI displays "No matches" and disables navigation buttons.
+- Search is case-insensitive and updates results in real-time as user types.
+- Performance: Search operations complete within 50ms for notes up to 10 MB.
+- Feature integrates seamlessly with MVC UI layer.
+- Tested via UI tests for search navigation and integration tests for match counting.
+
+### Story 11: Crash Recovery with WAL and Durable Save
+**As a** user, **I want** the application to recover my notes and preserve data consistency even if the application crashes unexpectedly, **so that** I never lose work due to application failure.
+
+**Mapped to Phase**: Phase 2 (Persistence) - WAL mode and crash recovery.
+**Acceptance Criteria**:
+- SQLite database uses WAL mode to ensure write-ahead logging and crash recovery.
+- On save, the application flushes pending writes to disk before confirming save completion to the user.
+- On unexpected application crash or system power loss, the database automatically recovers uncommitted transactions from the WAL journal on next startup.
+- No note data created or edited in the session is lost due to application or system failure.
+- Recovery is automatic and transparent to the user; no manual recovery steps are required.
+- Feature is modular, part of repository layer.
+- Security: WAL mode ensures data consistency across power failures and crashes.
+- Performance: Flush-before-confirm does not exceed <50ms per save operation.
+- Tested via integration tests for crash scenarios and performance benchmarks.
+
+### Story 12: Encryption with Argon2id Key Derivation and IV Management
+**As a** developer, **I want** encryption to use Argon2id key derivation with specific parameters and securely generate and store initialization vectors (IVs), **so that** private notes are protected with industry-standard key derivation and each encryption is uniquely randomized.
+
+**Mapped to Phase**: Phase 3 (Services) - EncryptionService implementation details.
+**Acceptance Criteria**:
+- Encryption uses AES-256-GCM with a 256-bit key derived via Argon2id with parameters: time cost 2, memory cost 65536 KiB, parallelism 1.
+- A random IV is generated for each encryption operation and stored alongside the ciphertext.
+- Decryption extracts the IV from storage and uses it to decrypt the payload; decryption succeeds only if the user provides the correct password.
+- Key derivation and IV generation are handled exclusively by EncryptionService.
+- Feature is modular and integrated into NoteService.
+- Security: Key derivation parameters are correct for modern security standards; IVs are cryptographically random and unique per encryption.
+- Performance: Encryption with key derivation completes in <100ms per note.
+- Tested via unit tests for encryption roundtrips with IV validation and integration tests for password-gated decryption.
+
+### Story 13: Trash with 14-Day Retention and Automatic Purge
+**As a** user, **I want** deleted notes to be moved to a Trash view where they are hidden from active notes and automatically purged after 14 days, **so that** I can recover accidentally deleted notes while eventually freeing up storage.
+
+**Mapped to Phase**: Phase 3 (Services) - Soft-delete and trash management.
+**Acceptance Criteria**:
+- Single or bulk deleted notes are moved to Trash (marked with is_trashed flag) and hidden from active note list.
+- Trash view displays all trashed notes separately with their deletion timestamps.
+- Users can restore notes from Trash during the 14-day retention period by selecting "Restore from Trash."
+- After 14 days, trashed notes and their associated snapshots are automatically and permanently deleted by a scheduled purge task.
+- All delete, restore, and purge operations are transactional; on failure, no partial state is committed.
+- Errors are logged and reported (no crashes).
+- Feature is modular, part of NoteService and repository layer.
+- Security: Deletions are audited in immutable logs.
+- Performance: Trash operations complete efficiently; purge task runs at scheduled intervals.
+- Tested via integration tests for trash workflows, retention validation, and transaction rollback scenarios.
+
+### Story 14: Automatic Snapshot Creation on Save
+**As a** developer, **I want** snapshots to be created automatically when a note is saved (not on every keystroke), and old snapshots to be purged automatically when the limit is exceeded, **so that** the system efficiently manages version history without excessive storage.
+
+**Mapped to Phase**: Phase 2 (Persistence) - Snapshot lifecycle management.
+**Acceptance Criteria**:
+- Snapshots are created automatically only on manual or auto-save operations, not on every keystroke.
+- The system retains a maximum of two snapshots per note; when a third snapshot would be created, the oldest snapshot is deleted (FIFO).
+- When a user reverts to a snapshot, a safety snapshot of the current note state is created first before applying the selected snapshot.
+- Snapshot creation and purge operations are transactional.
+- Cache is invalidated on snapshot restoration to prevent stale data.
+- Feature is modular, part of repository layer.
+- Security: Snapshots respect encryption; private-note snapshots remain encrypted until the note is decrypted.
+- Performance: Snapshot operations do not impact normal note save/load performance.
+- Tested via integration tests for snapshot lifecycle, cache invalidation, and FIFO purge validation.
+
+### Story 15: Graceful Shutdown with Unsaved-Edit Recovery
+**As a** user, **I want** the application to prompt me on exit if I have unsaved changes, and on restart after an unexpected shutdown, **so that** I can choose to save, discard, or cancel exit, and recover unsaved edits if the application crashes.
+
+**Mapped to Phase**: Phase 5 (UI & Integration) - Graceful shutdown and restart recovery.
+**Acceptance Criteria**:
+- On user-initiated exit, if there are unsaved note edits, the application displays a dialog with options: Save All, Discard All, or Cancel Exit.
+- On cancel, the application remains open and editing continues.
+- On unexpected application crash or system power loss, the next startup detects the crash and preserves in-memory edit state.
+- After restart, the user is presented with recovered unsaved edits and can choose to recover them or discard them.
+- All pending transactions are flushed and the database is closed cleanly on graceful shutdown.
+- Feature integrates into UI lifecycle and is modular with service layer.
+- Security: No sensitive data is exposed during shutdown prompts or recovery.
+- Performance: Shutdown and recovery operations complete quickly without blocking.
+- Tested via integration tests for graceful shutdown flows and crash recovery scenarios.
+
+### Story 16: Immutable Audit Log for Note Operations
+**As a** developer/administrator, **I want** all note create, update, delete, and encryption operations to be recorded in an immutable append-only audit log with timestamps, **so that** all note operations are traceable and tamper-proof.
+
+**Mapped to Phase**: Phase 3 (Services) & Phase 2 (Persistence) - Audit logging infrastructure.
+**Acceptance Criteria**:
+- An immutable audit log records all note create, update, delete, and encryption operations with timestamps and operation details.
+- Log entries cannot be modified or deleted once written.
+- Logs are stored in a dedicated database table and retained for the application lifetime.
+- Access to logs is restricted to admin/diagnostic contexts and is not exposed in standard user interfaces.
+- Log content is redacted to exclude sensitive data: note body content, decrypted private data, passwords.
+- Feature is modular, part of service and repository layers.
+- Security: Audit logs are immutable and tamper-proof; sensitive data is redacted.
+- Performance: Audit log writes do not block note operations.
+- Tested via integration tests for log creation, immutability validation, and redaction verification.
+
+### Story 17: Database Security and SQL Injection Prevention
+**As a** developer, **I want** all database queries to use prepared statements with parameterized queries and input validation to reject null bytes, **so that** the application is protected against SQL injection attacks.
+
+**Mapped to Phase**: Phase 2 (Persistence) - Database security hardening.
+**Acceptance Criteria**:
+- All database queries use prepared statements (`QSqlQuery` with parameter binding) and never use dynamic string concatenation or string templates.
+- Input validation rejects null bytes in string fields (title, body, tags).
+- Database file is stored in user-writable, application-owned directories via `QStandardPaths`.
+- Database is opened with restricted file permissions to prevent unauthorized access.
+- Feature is modular, part of repository layer.
+- Security: SQL injection attacks are prevented; database access is restricted to the application.
+- Performance: Prepared statements maintain performance through query plan caching.
+- Tested via unit tests for parameterized query construction and integration tests for injection attack scenarios.
+
+### Story 18: Consistent Error Handling and User Notification Contract
+**As a** developer, **I want** all errors during note operations (load, save, create, delete, encryption) to follow a consistent contract: log with full stack trace, notify the user non-blockingly, preserve application state, and allow retry, **so that** users are informed of errors and can recover without crashing.
+
+**Mapped to Phase**: Phase 3 (Services) & Phase 5 (UI & Integration) - Error handling strategy.
+**Acceptance Criteria**:
+- On any error during note load, save, create, delete, or encryption, the system logs the error with full stack trace to the application log file.
+- The application displays a non-blocking user notification describing the error in user-friendly language without exposing raw exception text.
+- The current application state is preserved; the user can retry the operation or continue working without interruption.
+- The application does not crash, hang, or corrupt the database on error.
+- All service/repository operations return explicit error results via `std::expected<T, Error>`.
+- Feature is modular, integrated across service and UI layers.
+- Security: Error messages do not expose sensitive information; logs are stored securely.
+- Performance: Error handling does not introduce performance penalties.
+- Tested via unit tests for error propagation and integration tests for user-facing error scenarios.
+
+---
 
 These 8 user stories cover all functional requirements while incorporating non-functional (performance, scalability), security (encryption, audit logs), and governance (error handling, modularity) aspects. Each story maps to a specific architecture phase, ensuring incremental, modular development aligned with the working agreements (AI-assisted with CoPilot/Gemini review) and definition of done (security, phase mapping, ease of integration).
 
