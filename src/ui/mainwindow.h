@@ -2,22 +2,39 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QWidget>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QListWidget>
+#include <QTextEdit>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QLabel>
+#include <QFrame>
 
-QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
-QT_END_NAMESPACE
-
-class MainWindow : public QMainWindow
-{
+// ... existing includes ...
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow() override;
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
 
 private:
-    Ui::MainWindow *ui;
+    QWidget *centralWidget;
+    QLineEdit *searchBar;
+    QLabel *saveIndicator;
+    QPushButton *saveButton;
+    
+    // Left side
+    QLabel *listTitle; // New title label
+    QListWidget *noteList;
+
+    // Right side
+    QLineEdit *titleBar;
+    QTextEdit *noteContext;
+
+    void applyCustomStyles();
 };
+
 #endif // MAINWINDOW_H
