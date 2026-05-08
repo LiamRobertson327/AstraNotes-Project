@@ -3,6 +3,7 @@
 
 Note::Note(QString noteTypeId, QString noteTitle)
     : typeId(std::move(noteTypeId)), title(std::move(noteTitle)) {
+    this->createdAt = QDateTime::currentDateTimeUtc();
     this->lastModified = QDateTime::currentDateTimeUtc();
 }
 
@@ -23,6 +24,10 @@ void Note::setContent(const QString& newContent) {
 void Note::setTypeId(const QString& newTypeId) {
     typeId = newTypeId;
     lastModified = QDateTime::currentDateTimeUtc();
+}
+
+void Note::setCreatedAt(const QDateTime& dateTime) {
+    createdAt = dateTime;
 }
 
 void Note::display() const {

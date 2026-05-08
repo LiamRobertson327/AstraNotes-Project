@@ -18,6 +18,7 @@ obj/
 .vs/
 ipch/
 .cache/
+.triggerRelease
 
 # 3. CMake Files
 CMakeFiles/

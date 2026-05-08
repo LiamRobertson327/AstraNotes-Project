@@ -8,8 +8,10 @@
 
 class INote;
 
-class IPlugin {
+class IPlugin : public QObject {
+	Q_OBJECT
 public:
+	explicit IPlugin(QObject *parent = nullptr) : QObject(parent) {}
 	virtual ~IPlugin() = default;
 
 	// Stable identity used by the app and by saved notes.

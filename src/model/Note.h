@@ -13,12 +13,15 @@ public:
     QString getTitle() const { return title; }
     qint64 getId() const { return id; }
     QString getTypeId() const { return typeId; }
+    QString getContent() const { return content; }
+    QDateTime getCreatedAt() const { return createdAt; }
 
     //Setters
     void setId(qint64 newId);
     void setTitle(const QString& newTitle);
     void setContent(const QString& newContent);
     void setTypeId(const QString& newTypeId);
+    void setCreatedAt(const QDateTime& dateTime);
 
     //Methods
     void display() const;
@@ -29,6 +32,7 @@ private:
     QString typeId;
     QString title;
     QString content;
+    QDateTime createdAt;
     QDateTime lastModified;
 
 };
