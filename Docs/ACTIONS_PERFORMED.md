@@ -27,6 +27,8 @@
 | 2026-05-04 | Expanded development checkpoint review order | `docs/DEVELOPMENT_CHECKPOINT.md` | Added a detailed review sequence for requirements, stories, backlog, sprint plan, test plan, and release gates. |
 | 2026-05-04 | Added product requirements document | `docs/ASTRANOTES_PRD.md` | Created a high-level PRD aligned to the refined requirements and planning artifacts. |
 | 2026-05-06 | Updated requirement traceability matrix | `docs/REQUIREMENT_TRACEABILITY_MATRIX.md` | Replaced the matrix with the revised statuses, gap notes, and requirement wording for FR1, FR2, FR5, FR6, FR8, FR9, NFR1, NFR3, and SR1. |
+| 2026-05-06 | Created SDLC phase mapping document | `docs/SDLC_PHASE_MAPPING.md` | Mapped all 16 documentation artifacts to SDLC phases: Requirements, Design, Planning, Implementation, Testing, Release, and Meta. Includes flow diagram and quick reference table. |
+| 2026-05-06 | Created UI refinement & plugin implementation plan | `docs/UI_PLUGIN_IMPLEMENTATION_PLAN.md` | Comprehensive plan for note-type awareness, plugin system, formatting toolbar, and SQLite persistence based on Gemini feedback. Includes 5-phase roadmap, code samples, and design decisions. |
 
 ---
 

@@ -1,0 +1,58 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # This triggers the build whenever you push a tag like v1.0, v1.1, etc.
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3' # Use a stable LTS version compatible with your code
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_mingw'
+
+      - name: Setup MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      - name: Configure and Build
+        run: |
+          mkdir build
+          cd build
+          cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build . --config Release
+
+      - name: Package with Windeployqt
+        run: |
+          cd build/Release
+          # 1. Run windeployqt to grab all DLLs (SQL, Widgets, etc.)
+          windeployqt --no-translations --compiler-runtime AstraNotes.exe
+          
+          # 2. Cleanup: Remove unnecessary files to keep the zip small
+          # (Optional: remove any junk files created by the build process)
+          
+          # 3. Zip the RELEASE folder specifically
+          7z a ../../AstraNotes-Windows.zip ./*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: AstraNotes-Windows.zip
+          name: AstraNotes v1.0
+          body: |
+            Portable Windows Release
+            - Database is stored locally in the app folder.
+            - Includes Markdown and Plaintext plugins.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

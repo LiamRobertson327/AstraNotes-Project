@@ -17,6 +17,7 @@ obj/
 .vscode/
 .vs/
 ipch/
+.cache/
 
 # 3. CMake Files
 CMakeFiles/
