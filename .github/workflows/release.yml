@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' # This triggers the build whenever you push a tag like v1.0, v1.1, etc.
+      - 'v*'
 
 jobs:
   build:
@@ -16,43 +16,44 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
-          version: '6.5.3' # Use a stable LTS version compatible with your code
+          version: '6.5.3'
           host: 'windows'
           target: 'desktop'
           arch: 'win64_mingw'
 
-      - name: Setup MinGW
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
+      - name: Set up MinGW
+        # Instead of the external action, we just add the pre-installed MinGW to the PATH
+        run: |
+          echo "C:\ProgramData\Chocolatey\lib\mingw\tools\install\mingw64\bin" >> $GITHUB_PATH
 
       - name: Configure and Build
         run: |
           mkdir build
           cd build
+          # Explicitly tell CMake to use MinGW
           cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
           cmake --build . --config Release
 
       - name: Package with Windeployqt
         run: |
-          cd build/Release
-          # 1. Run windeployqt to grab all DLLs (SQL, Widgets, etc.)
-          windeployqt --no-translations --compiler-runtime AstraNotes.exe
+          cd build
+          # windeployqt usually handles the folder structure, but we specify the path to the exe
+          # Note: CMake with MinGW often puts the exe directly in /build/ or /build/Release/
+          if (Test-Path "AstraNotes.exe") { $exePath = "AstraNotes.exe" }
+          else { $exePath = "Release/AstraNotes.exe" }
           
-          # 2. Cleanup: Remove unnecessary files to keep the zip small
-          # (Optional: remove any junk files created by the build process)
+          windeployqt --release --no-translations --compiler-runtime $exePath
           
-          # 3. Zip the RELEASE folder specifically
-          7z a ../../AstraNotes-Windows.zip ./*
+          # Create the zip
+          7z a ../AstraNotes-Windows.zip ./*
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: AstraNotes-Windows.zip
-          name: AstraNotes v1.0
+          name: AstraNotes ${{ github.ref_name }}
           body: |
-            Portable Windows Release
-            - Database is stored locally in the app folder.
-            - Includes Markdown and Plaintext plugins.
+            Portable Windows Release for AstraNotes.
+            Download the ZIP, extract all files, and run AstraNotes.exe.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
