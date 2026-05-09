@@ -49,7 +49,7 @@ jobs:
         shell: pwsh
         run: |
           cd build
-          $exePath = Get-ChildItem -Recursion -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
+          $exePath = Get-ChildItem -Recurse -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
           if (-not $exePath) { throw "AstraNotes.exe not found!" }
           
           & "$env:QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations --compiler-runtime $exePath
