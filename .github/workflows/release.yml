@@ -20,7 +20,9 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_mingw'
+          setup-python: false
           cache: true
+          tools-only: false
 
       - name: Configure CMake
         shell: bash
