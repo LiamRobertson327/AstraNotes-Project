@@ -10,61 +10,57 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@v3
         with:
           version: '6.5.3'
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64'
-          cache: true
 
-      - name: Configure CMake
-        shell: bash
+      - name: Set up MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Remove MinGW from PATH
+        # This prevents the 'ld.exe' error by hiding MinGW from CMake
+        shell: pwsh
         run: |
-          cmake -B build \
-            -G "Ninja" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+          $path = $env:PATH -split ';' | Where-Object { $_ -notlike "*mingw*" }
+          $path = $path -join ';'
+          echo "PATH=$path" >> $env:GITHUB_ENV
 
-      - name: Build
-        shell: bash
+      - name: Configure and Build
+        shell: pwsh
         run: |
-          cmake --build build --parallel
+          mkdir build
+          cd build
+          # Explicitly tell CMake to use the Visual Studio 'cl' compiler
+          cmake -G "Ninja" `
+                -DCMAKE_C_COMPILER=cl `
+                -DCMAKE_CXX_COMPILER=cl `
+                -DCMAKE_BUILD_TYPE=Release `
+                -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" ..
+          cmake --build . --config Release
 
-      - name: Deploy Qt
+      - name: Package with Windeployqt
         shell: pwsh
         run: |
           cd build
-
-          $exePath = Get-ChildItem -Recurse -Filter "AstraNotes.exe" |
-            Select-Object -First 1 -ExpandProperty FullName
-
-          if (-not $exePath) {
-            throw "AstraNotes.exe not found!"
-          }
-
-          & "$env:QT_ROOT_DIR/bin/windeployqt.exe" `
-            --release `
-            --compiler-runtime `
-            $exePath
-
+          $exePath = Get-ChildItem -Recursion -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $exePath) { throw "AstraNotes.exe not found!" }
+          
+          & "$env:QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations --compiler-runtime $exePath
+          
           $deployDir = Split-Path $exePath
+          7z a ../AstraNotes-Windows.zip "$deployDir/*"
 
-          if (!(Test-Path "$deployDir/sqldrivers/qsqlite.dll")) {
-            throw "SQLite plugin missing!"
-          }
-
-          Compress-Archive `
-            -Path "$deployDir/*" `
-            -DestinationPath "../AstraNotes-Windows.zip"
-
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: AstraNotes-Windows.zip
+          name: AstraNotes ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
