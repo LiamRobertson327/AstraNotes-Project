@@ -16,37 +16,38 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
-          version: '6.5.3' # Stable LTS version
+          # We use 6.5.3 as it is the most stable Long Term Support version 
+          # for these build servers.
+          version: '6.5.3'
           host: 'windows'
           target: 'desktop'
           arch: 'win64_mingw'
 
-      - name: Setup MinGW Path
-        # We use the MinGW already present on the Windows runner instead of installing a new one
-        run: |
-          echo "C:\ProgramData\Chocolatey\bin" >> $GITHUB_PATH
-          echo "C:\ProgramData\Chocolatey\lib\mingw\tools\install\mingw64\bin" >> $GITHUB_PATH
-
       - name: Configure and Build
+        shell: bash
         run: |
           mkdir build
           cd build
-          cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+          # We use the Qt environment variables set by the 'install-qt-action'
+          # This ensures CMake knows exactly where the libraries are.
+          cmake -G "MinGW Makefiles" \
+                -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
+                -DCMAKE_BUILD_TYPE=Release ..
           cmake --build . --config Release
 
       - name: Package with Windeployqt
         shell: pwsh
         run: |
           cd build
-          # Find the exe regardless of whether CMake put it in /build or /build/Release
+          # Use PowerShell to find the exe regardless of folder structure
           $exePath = Get-ChildItem -Recursion -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
           
           if (-not $exePath) { throw "AstraNotes.exe not found!" }
           
-          # Run windeployqt on the found path
-          windeployqt --release --no-translations --compiler-runtime $exePath
+          # Use the windeployqt from the Qt installation we just downloaded
+          & "$env:QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations --compiler-runtime $exePath
           
-          # Zip everything in the folder where the exe was found
+          # Zip the deployment directory
           $deployDir = Split-Path $exePath
           7z a ../AstraNotes-Windows.zip "$deployDir/*"
 
@@ -55,9 +56,5 @@ jobs:
         with:
           files: AstraNotes-Windows.zip
           name: AstraNotes ${{ github.ref_name }}
-          body: |
-            Automated Release for AstraNotes.
-            - Portable Windows build.
-            - Database stored in application directory.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
