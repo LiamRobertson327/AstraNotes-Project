@@ -10,49 +10,67 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@v4
         with:
-          # We use 6.5.3 as it is the most stable Long Term Support version 
-          # for these build servers.
           version: '6.5.3'
           host: 'windows'
           target: 'desktop'
           arch: 'win64_mingw'
+          cache: true
 
-      - name: Configure and Build
+      - name: Configure CMake
         shell: bash
         run: |
           mkdir build
           cd build
-          # We use the Qt environment variables set by the 'install-qt-action'
-          # This ensures CMake knows exactly where the libraries are.
-          cmake -G "MinGW Makefiles" \
-                -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
-                -DCMAKE_BUILD_TYPE=Release ..
-          cmake --build . --config Release
 
-      - name: Package with Windeployqt
+          cmake .. \
+            -G "MinGW Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" \
+            -DCMAKE_C_COMPILER="$QT_ROOT_DIR/Tools/mingw1120_64/bin/gcc.exe" \
+            -DCMAKE_CXX_COMPILER="$QT_ROOT_DIR/Tools/mingw1120_64/bin/g++.exe"
+
+      - name: Build
+        shell: bash
+        run: |
+          cd build
+          cmake --build . --parallel
+
+      - name: Deploy Qt DLLs
         shell: pwsh
         run: |
           cd build
-          # Use PowerShell to find the exe regardless of folder structure
-          $exePath = Get-ChildItem -Recursion -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
-          
-          if (-not $exePath) { throw "AstraNotes.exe not found!" }
-          
-          # Use the windeployqt from the Qt installation we just downloaded
-          & "$env:QT_ROOT_DIR/bin/windeployqt.exe" --release --no-translations --compiler-runtime $exePath
-          
-          # Zip the deployment directory
-          $deployDir = Split-Path $exePath
-          7z a ../AstraNotes-Windows.zip "$deployDir/*"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+          $exePath = Get-ChildItem -Recurse -Filter "AstraNotes.exe" |
+            Select-Object -First 1 -ExpandProperty FullName
+
+          if (-not $exePath) {
+            throw "AstraNotes.exe not found!"
+          }
+
+          Write-Host "Found exe: $exePath"
+
+          $windeployqt = "$env:QT_ROOT_DIR/bin/windeployqt.exe"
+
+          & $windeployqt `
+            --release `
+            --compiler-runtime `
+            --no-translations `
+            $exePath
+
+          $deployDir = Split-Path $exePath
+
+          Compress-Archive `
+            -Path "$deployDir/*" `
+            -DestinationPath "../AstraNotes-Windows.zip"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
           files: AstraNotes-Windows.zip
           name: AstraNotes ${{ github.ref_name }}
