@@ -54,8 +54,8 @@ jobs:
           $exePath = Get-ChildItem -Recurse -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
           if (-not $exePath) { throw "AstraNotes.exe not found!" }
           
-          mkdir dist
-          copy $exePath dist/
+          mkdir AstraNotesTaker
+          copy $exePath AstraNotesTaker/
 
           # 2. Find the deployment tool (windeployqt.exe)
           # We look in the Qt installation directory provided by the action
@@ -66,10 +66,10 @@ jobs:
           Write-Host "Found Tool: $deployTool"
 
           # 3. Run the tool using the full discovered path
-          & $deployTool --release --no-translations --compiler-runtime dist/AstraNotes.exe
+          & $deployTool --release --no-translations --compiler-runtime AstraNotesTaker/AstraNotes.exe
           
           # 4. Zip it up
-          7z a ../AstraNotes-Windows.zip "dist/*"
+          7z a ../AstraNotes-Windows.zip "AstraNotesTaker/*"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
