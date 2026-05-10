@@ -17,12 +17,20 @@ file(GLOB_RECURSE ASTRA_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/*.c"
 )
 
+# Check if we are running in GitHub Actions (where we use MSVC which handles spaces fine)
+if(DEFINED ENV{GITHUB_ACTIONS})
+    set(RESOURCE_FILES resources.rc)
+else()
+    # Locally (MinGW), we skip the .rc file to avoid the "Space" crash
+    set(RESOURCE_FILES "")
+endif()
+
 qt_add_executable(AstraNotes
     WIN32 MACOSX_BUNDLE
     ${ASTRA_SOURCES}
     src/ui/mainwindow.h
     src/ui/mainwindow.ui
-    resources.rc
+    ${RESOURCE_FILES}
 )
 
 # 4. Tell CMake which folders to use
