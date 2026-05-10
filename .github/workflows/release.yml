@@ -51,10 +51,12 @@ jobs:
         shell: pwsh
         run: |
           cd build
-          # 1. Find your app
           $exePath = Get-ChildItem -Recurse -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
           if (-not $exePath) { throw "AstraNotes.exe not found!" }
           
+          mkdir dist
+          copy $exePath dist/
+
           # 2. Find the deployment tool (windeployqt.exe)
           # We look in the Qt installation directory provided by the action
           $deployTool = Get-ChildItem -Path "$env:Qt6_DIR" -Recurse -Filter "windeployqt.exe" | Select-Object -First 1 -ExpandProperty FullName
@@ -64,11 +66,10 @@ jobs:
           Write-Host "Found Tool: $deployTool"
 
           # 3. Run the tool using the full discovered path
-          & $deployTool --release --no-translations --compiler-runtime $exePath
+          & $deployTool --release --no-translations --compiler-runtime dist/AstraNotes.exe
           
           # 4. Zip it up
-          $deployDir = Split-Path $exePath
-          7z a ../AstraNotes-Windows.zip "$deployDir/*"
+          7z a ../AstraNotes-Windows.zip "dist/*"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

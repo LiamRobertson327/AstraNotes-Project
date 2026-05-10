@@ -22,6 +22,7 @@ qt_add_executable(AstraNotes
     ${ASTRA_SOURCES}
     src/ui/mainwindow.h
     src/ui/mainwindow.ui
+    resources.rc
 )
 
 # 4. Tell CMake which folders to use
