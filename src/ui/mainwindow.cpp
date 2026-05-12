@@ -107,19 +107,20 @@ void MainWindow::loadNotesFromDatabase() {
     // Populate the note list widget
     for (Note *note : allNotes) {
         if (note) {
-            QString displayText = note->getTitle();
+            QString displayText = note->title();
             if (displayText.isEmpty()) {
                 displayText = "(Untitled)";
             }
             
             // Add creation date to the display text
-            QString createdDate = note->getCreatedAt().toString("MMM dd, yyyy");
+            QString createdDate = note->createdAt().toString("MMM dd, yyyy");
             displayText = displayText + "\n" + createdDate;
             
             QListWidgetItem *item = new QListWidgetItem(displayText, noteList);
-            item->setData(Qt::UserRole, note->getId());  // Store the note ID for retrieval
+            // Store the note identifier using the INote API (`noteId()`)
+            item->setData(Qt::UserRole, note->noteId());
             
-            qDebug() << "[MainWindow::loadNotesFromDatabase] Added note:" << note->getId() << "-" << displayText;
+            qDebug() << "[MainWindow::loadNotesFromDatabase] Added note:" << note->noteId() << "-" << displayText;
             delete note;  // We don't need to keep the Note object; we just stored the ID
         }
     }
@@ -147,13 +148,13 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
     currentNote = note;
     
     // Populate UI with note data
-    titleBar->setText(note->getTitle());
-    writeEditor->setText(note->getContent());
-    readViewer->setText(note->getContent());
-    splitEditor->setText(note->getContent());
-    
+    titleBar->setText(note->title());
+    writeEditor->setText(note->content());
+    readViewer->setText(note->content());
+    splitEditor->setText(note->content());
+
     // Set the note type to show/hide appropriate buttons
-    setNoteType(note->getTypeId());
+    setNoteType(note->typeId());
     
     // Clear unsaved indicator
     saveIndicator->setText("● Saved");
@@ -463,12 +464,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
             saveIndicator->setStyleSheet("color: #4CAF50;");
             
             // Add newly saved note to the list if it's a new note (ID was -1 before save)
-            if (currentNote->getId() > 0) {
+                // If repository assigned a positive ID, it's persisted
+                if (currentNote->noteId() > 0) {
                 // Check if note already exists in list
                 bool noteExists = false;
-                for (int i = 0; i < noteList->count(); ++i) {
+                    for (int i = 0; i < noteList->count(); ++i) {
                     QListWidgetItem *item = noteList->item(i);
-                    if (item->data(Qt::UserRole).toLongLong() == currentNote->getId()) {
+                    if (item->data(Qt::UserRole).toLongLong() == currentNote->noteId()) {
                         noteExists = true;
                         break;
                     }
@@ -476,15 +478,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
                 
                 // If new note, add it to the top of the list
                 if (!noteExists) {
-                    QString displayText = currentNote->getTitle();
+                    QString displayText = currentNote->title();
                     if (displayText.isEmpty()) {
                         displayText = "(Untitled)";
                     }
-                    QString createdDate = currentNote->getCreatedAt().toString("MMM dd, yyyy");
+                    QString createdDate = currentNote->createdAt().toString("MMM dd, yyyy");
                     displayText = displayText + "\n" + createdDate;
                     
                     QListWidgetItem *newItem = new QListWidgetItem(displayText, nullptr);
-                    newItem->setData(Qt::UserRole, currentNote->getId());
+                    // Use the INote `noteId()` for storage in the UI list
+                    newItem->setData(Qt::UserRole, currentNote->noteId());
                     noteList->insertItem(0, newItem);
                 }
             }

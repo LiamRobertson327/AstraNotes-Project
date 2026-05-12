@@ -2,42 +2,46 @@
 #define IPLUGIN_H
 
 #include <QString>
-#include <QStringList>
-#include <QDateTime>
-#include <QtGlobal>
+#include <QObject>
+#include <QList>
+#include <QVariantMap>
+#include <QByteArray>
+#include "INote.h"
 
-class INote;
+class IFormattingAction;
 
+// Public plugin contract for developers.
+// Plugins expose format metadata, serialize/deserialize note data,
+// optionally render read-only content, and provide formatting actions.
 class IPlugin : public QObject {
-	Q_OBJECT
 public:
-	explicit IPlugin(QObject *parent = nullptr) : QObject(parent) {}
-	virtual ~IPlugin() = default;
+    explicit IPlugin(QObject *parent = nullptr) : QObject(parent) {}
+    virtual ~IPlugin() = default;
 
-	// Stable identity used by the app and by saved notes.
-	virtual QString pluginId() const = 0;
-	virtual QString displayName() const = 0;
-	virtual QString version() const = 0;
-	virtual QString author() const = 0;
+    // Plugin metadata
+    virtual QString formatId() const = 0;        // e.g., "plaintext", "markdown"
+    virtual QString displayName() const = 0;     // e.g., "Plain Text", "Markdown"
 
-	// Capabilities advertised to the UI and plugin manager.
-	virtual QStringList supportedNoteTypeIds() const = 0;
-	virtual QStringList supportedMimeTypes() const = 0;
+    // Serialization: plugins provide metadata plus an optional binary payload.
+    // Metadata is a small key/value map; payload carries large or binary data.
+    virtual QVariantMap serializeMetadata(const INote &note) const = 0;
+    virtual QByteArray serializePayload(const INote &note) const = 0;
 
-	// Lifecycle hooks.
-	virtual bool initialize() = 0;
-	virtual void shutdown() = 0;
+    // Deserialize from metadata + payload into an INote instance.
+    virtual bool deserialize(const QVariantMap &metadata, const QByteArray &payload, INote &note) const = 0;
 
-	// Core operations for a plugin-driven note format.
-	virtual QString serialize(const INote& note) const = 0;
-	virtual bool deserialize(const QString& payload, INote& note) const = 0;
-	virtual bool validate(const INote& note) const = 0;
+    // Rendering helper: read-only display for a note.
+    virtual QString render(const INote &note) const { return note.content(); }
 
-	// Optional helper for future file-based import/export behavior.
-	virtual QString defaultFileExtension() const = 0;
+    // Capability flags
+    virtual bool supportsMarkdown() const = 0;
+    virtual bool supportsPlaintext() const = 0;
+
+    // Formatting actions (optional)
+    virtual QList<IFormattingAction*> getFormattingActions() const { return {}; }
 };
 
 #define IPlugin_IID "com.astranotes.IPlugin/1.0"
 Q_DECLARE_INTERFACE(IPlugin, IPlugin_IID)
 
-#endif
+#endif // IPLUGIN_H

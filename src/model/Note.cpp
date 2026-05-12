@@ -2,36 +2,46 @@
 #include <QDebug>       //Provides an output stream for debugging information.
 
 Note::Note(QString noteTypeId, QString noteTitle)
-    : typeId(std::move(noteTypeId)), title(std::move(noteTitle)) {
-    this->createdAt = QDateTime::currentDateTimeUtc();
-    this->lastModified = QDateTime::currentDateTimeUtc();
+    : m_typeId(std::move(noteTypeId)), m_title(std::move(noteTitle)) {
+    m_createdAt = QDateTime::currentDateTimeUtc();
+    m_lastModified = QDateTime::currentDateTimeUtc();
 }
 
-void Note::setId(qint64 newId) {
-    id = newId;
+void Note::setNoteId(qint64 newId) {
+    m_noteId = newId;
 }
 
 void Note::setTitle(const QString& newTitle) {
-    title = newTitle;
-    lastModified = QDateTime::currentDateTimeUtc();
+    m_title = newTitle;
+    m_lastModified = QDateTime::currentDateTimeUtc();
 }
 
 void Note::setContent(const QString& newContent) {
-    content = newContent;
-    lastModified = QDateTime::currentDateTimeUtc();
+    m_content = newContent;
+    m_lastModified = QDateTime::currentDateTimeUtc();
 }
 
 void Note::setTypeId(const QString& newTypeId) {
-    typeId = newTypeId;
-    lastModified = QDateTime::currentDateTimeUtc();
+    m_typeId = newTypeId;
+    m_lastModified = QDateTime::currentDateTimeUtc();
 }
 
 void Note::setCreatedAt(const QDateTime& dateTime) {
-    createdAt = dateTime;
+    m_createdAt = dateTime;
+}
+
+void Note::setLastModified(const QDateTime& dateTime) {
+    m_lastModified = dateTime;
 }
 
 void Note::display() const {
-    qInfo().noquote() << "[" + QString::number(id) + "] " + title;
-    qInfo().noquote() << "Last Modified:" << lastModified.toString(Qt::ISODate);
-    qInfo().noquote() << "Content:" << content;
+    qInfo().noquote() << "[" + QString::number(m_noteId) + "] " + m_title;
+    qInfo().noquote() << "Last Modified:" << m_lastModified.toString(Qt::ISODate);
+    qInfo().noquote() << "Content:" << m_content;
+}
+
+// INote interface implementations
+QString Note::displayText() const {
+    QString t = m_title.isEmpty() ? "(Untitled)" : m_title;
+    return t + "\n" + m_createdAt.toString("MMM dd, yyyy");
 }

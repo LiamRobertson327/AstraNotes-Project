@@ -1,7 +1,7 @@
 #ifndef PLUGINMANAGER_H
 #define PLUGINMANAGER_H
 
-#include "IPlugin.h"
+#include "../api/IPlugin.h"
 #include <QMap>
 #include <QString>
 #include <QStringList>

@@ -1,7 +1,7 @@
 #ifndef PLAINTEXTPLUGIN_H
 #define PLAINTEXTPLUGIN_H
 
-#include "IPlugin.h"
+#include "../api/IPlugin.h"
 
 class PlaintextPlugin : public IPlugin {
     Q_OBJECT
@@ -12,11 +12,27 @@ public:
 
     QString formatId() const override { return "plaintext"; }
     QString displayName() const override { return "Plain Text"; }
+    QVariantMap serializeMetadata(const INote &note) const override {
+        QVariantMap m;
+        m.insert("format", formatId());
+        m.insert("text", note.content());
+        return m;
+    }
 
-    QString serialize(const QString &content) const override { return content; }
-    QString deserialize(const QString &stored) const override { return stored; }
+    QByteArray serializePayload(const INote & /*note*/) const override {
+        return QByteArray();
+    }
 
-    QString render(const QString &content) const override { return content; }
+    bool deserialize(const QVariantMap &metadata, const QByteArray &payload, INote &note) const override {
+        Q_UNUSED(payload)
+        if (metadata.contains("text")) {
+            note.setContent(metadata.value("text").toString());
+            return true;
+        }
+        return false;
+    }
+
+    QString render(const INote &note) const override { return note.content(); }
 
     bool supportsMarkdown() const override { return false; }
     bool supportsPlaintext() const override { return true; }
