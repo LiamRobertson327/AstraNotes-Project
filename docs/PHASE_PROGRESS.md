@@ -21,6 +21,7 @@
 | Phase 6 | Global Search, Metadata, and Version History | [x] | Completed and integrated |
 | Phase 7 | Security, Encryption, and Auditability | [x] | Completed and integrated |
 | Phase 8 | Trash, Retention, and Release Hardening | [ ] | Planned next |
+| Phase 9 | Strict MVC Refactor | [ ] | Planned after Phase 8 is implemented |
 
 ---
 
@@ -100,6 +101,11 @@
 - **Base64 / Tag Integrity:** Encryption and decryption paths now preserve Base64 payloads and validate the 128-bit authentication tag before decryption finalization.
 
 - Phase 7 security work is complete and the encryption flow is now stable for secured note save/load and snapshot persistence.
+
+### Phase 9
+- Planned only after Phase 8 is completed and verified.
+- Goal: move toward a stricter MVC split by extracting remaining note orchestration out of `MainWindow` and into controller/service boundaries.
+- Current `MainWindow` responsibilities to evaluate for extraction include save/open flow, snapshot orchestration, and other non-visual note lifecycle logic.
 
 #### Bug Fixes
 - Fixed the double-encryption loop between `save()` and `createSnapshotForCurrentNote()` by reusing the note's encrypted ciphertext, salt, IV, and tag for snapshot persistence.

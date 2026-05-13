@@ -4,6 +4,12 @@
 [![Qt](https://img.shields.io/badge/Qt-6.11.0-41CD52?logo=qt&logoColor=white)](https://www.qt.io/)
 [![CMake](https://img.shields.io/badge/CMake-3.30-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 
+## ⚠️⚠️ Disclaimer & Data Safety⚠️⚠️
+* **AstraNotes is currently in active development.**  By using this application, you ackowledge and accept the following:
+    * **Alpha Software**: You may encounter bugs or other incomplete features.  Always keep backups of important notes.
+    * **Encryption**: Encryption is handled locally using AES-256-GCM.  We do not store your passwords.  If you lose or forget your encryption password, you secured notes are impossible to recover.
+    * **Use at your own risk**: This software is provided "as is", without warranty of any kind.  The develoeprs are not responsible for any loss of data or damages resulting from the use of this application.
+
 ## 📋 Requirements
 * C++23
 
