@@ -70,18 +70,19 @@ install(SCRIPT ${deploy_script})
 # This detects your MSYS2 OpenSSL modules and copies them to your build directory 
 # so the "Brain" can find its "Tools" even after a restart.
 # --- Portable OpenSSL Module Handling ---
-if(WIN32 AND OPENSSL_FOUND)
-    # Use the 'OPENSSL_PROGRAM' or 'OPENSSL_INCLUDE_DIR' to find the library root 
-    # instead of hardcoding C:/msys64
-    get_filename_component(OPENSSL_BIN_DIR "${OPENSSL_CRYPTO_LIBRARY}" DIRECTORY)
+if(OpenSSL_FOUND AND WIN32)
+    # Get the actual path to libcrypto.lib (ignoring the "optimized;debug" list)
+    # We use the FIRST item in the list if it's a list
+    list(GET OPENSSL_CRYPTO_LIBRARIES 0 SECURE_LIB_PATH)
+    get_filename_component(OPENSSL_DIR "${SECURE_LIB_PATH}" DIRECTORY)
     
-    # Usually modules are in ../lib/ossl-modules relative to the bin
-    set(OSSL_SRC "${OPENSSL_BIN_DIR}/../lib/ossl-modules")
-    set(OSSL_DEST "${CMAKE_BINARY_DIR}/ossl-modules")
+    # Go up one level from 'lib' to find 'bin' or 'lib/ossl-modules'
+    # On many Windows installs, it's in bin/ossl-modules or lib/ossl-modules
+    set(OSSL_MODULES_SRC "${OPENSSL_DIR}/ossl-modules")
 
     add_custom_command(TARGET AstraNotes POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${OSSL_DEST}"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${OSSL_SRC}" "${OSSL_DEST}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:AstraNotes>/ossl-modules"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${OSSL_MODULES_SRC}" "$<TARGET_FILE_DIR:AstraNotes>/ossl-modules"
         COMMENT "Deploying OpenSSL modules for portable encryption"
     )
 endif()
