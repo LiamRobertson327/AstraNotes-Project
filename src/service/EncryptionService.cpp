@@ -136,7 +136,7 @@ bool EncryptionService::deriveKey(const QString &password,
 EncryptionService::EncryptedPayload EncryptionService::encrypt(const QString &plaintext,
                                                                const QString &password) {
     EncryptedPayload payload;
-    QMessageBox::information(nullptr, "Encryption Input", "Encrypting this text: " + plaintext.left(20) + "...");
+    // QMessageBox::information(nullptr, "Encryption Input", "Encrypting this text: " + plaintext.left(20) + "...");
 
     const QByteArray salt = randomBytes(kSaltSize);
     const QByteArray iv = randomBytes(kIvSize);

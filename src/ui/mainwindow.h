@@ -24,6 +24,7 @@ class QCloseEvent;
 class QKeyEvent;
 
 class Note;  // Forward declaration for Phase 1
+class NoteService;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -37,6 +38,7 @@ private:
     QWidget *centralWidget;
         // Repository for persistence (Phase 4)
         SqliteNoteRepository *noteRepository;
+        NoteService *noteService;
     QLineEdit *searchBar;
     QPushButton *searchPrevButton;
     QPushButton *searchNextButton;

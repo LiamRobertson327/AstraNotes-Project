@@ -5,6 +5,7 @@
 #include "../plugins/MarkdownPlugin.h"
 #include "../model/Note.h"
 #include "../model/Snapshot.h"
+#include "../service/NoteService.h"
 #include "../repository/SqliteNoteRepository.h"
 #include <QTimer>
 #include <QDebug>
@@ -304,8 +305,8 @@ bool MainWindow::confirmUnsavedChanges(const QString &actionText) {
 
 bool MainWindow::saveCurrentNote(bool createSnapshot) {
     if (autoSaveTimer) autoSaveTimer->stop();
-    if (!noteRepository) {
-        qWarning() << "noteRepository is null";
+    if (!noteService) {
+        qWarning() << "noteService is null";
         saveIndicator->setText("● Error: DB not ready");
         saveIndicator->setStyleSheet("color: #F44336;");
         return false;
@@ -335,7 +336,8 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
         }
     }
 
-    if (noteRepository->save(*currentNote, currentNote->isSecured() ? sessionPassword : QString())) {
+    QString saveError;
+    if (noteService && noteService->saveNote(*currentNote, currentNote->isSecured() ? sessionPassword : QString(), createSnapshot, &saveError)) {
         setUnsavedChanges(false);
         saveIndicator->setText("● Saved");
         saveIndicator->setStyleSheet("color: #4CAF50;");
@@ -361,11 +363,6 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
         updateMetadataDisplay();
         updateSearchState(searchBar ? searchBar->text() : QString());
 
-        // Phase 6: FR8 - Create snapshot only for manual saves or when requested
-        if (createSnapshot) {
-            createSnapshotForCurrentNote();
-        }
-
         QTimer::singleShot(2000, [this](){
             if (!hasUnsavedChanges) {
                 saveIndicator->setText("● Saved");
@@ -375,6 +372,9 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
         return true;
     }
 
+    if (!saveError.isEmpty()) {
+        qWarning() << "[MainWindow::saveCurrentNote]" << saveError;
+    }
     saveIndicator->setText("● Error: Save failed");
     saveIndicator->setStyleSheet("color: #F44336;");
     return false;
@@ -540,15 +540,15 @@ void MainWindow::onNoteListScrolled() {
 }
 
 void MainWindow::loadNoteIntoEditor(qint64 noteId) {
-    if (!noteRepository) {
-        qWarning() << "[MainWindow::loadNoteIntoEditor] noteRepository is null!";
+    if (!noteService) {
+        qWarning() << "[MainWindow::loadNoteIntoEditor] noteService is null!";
         return;
     }
     
     qDebug() << "[MainWindow::loadNoteIntoEditor] Loading note with ID:" << noteId;
     
-    // Retrieve the note from database
-    Note *note = noteRepository->getById(noteId);
+    // Retrieve the note from the service so the workflow stays outside the UI layer
+    Note *note = noteService ? noteService->loadNote(noteId) : nullptr;
     if (!note) {
         qWarning() << "[MainWindow::loadNoteIntoEditor] Failed to load note with ID:" << noteId;
         return;
@@ -562,11 +562,15 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
         }
 
         bool wrongPassword = false;
-        Note *decryptedNote = noteRepository->getById(noteId, enteredPassword, &wrongPassword);
+        QString loadError;
+        Note *decryptedNote = noteService ? noteService->loadNote(noteId, enteredPassword, &wrongPassword, &loadError) : nullptr;
         delete note;
         if (!decryptedNote) {
             if (wrongPassword) {
                 QMessageBox::warning(this, "Incorrect Password", "The password you entered could not decrypt this note.");
+            }
+            if (!loadError.isEmpty()) {
+                qWarning() << "[MainWindow::loadNoteIntoEditor]" << loadError;
             }
             return;
         }
@@ -663,6 +667,7 @@ void MainWindow::createNewNote(const QString &typeId) {
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         // Initialize Phase 1 members
         currentNote = nullptr;
+    noteService = nullptr;
         currentTypeId = "plaintext";
     isLoadingDocument = false;
     hasUnsavedChanges = false;
@@ -698,6 +703,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         } else {
             qDebug() << "[MainWindow] Database connected successfully";
         }
+        noteService = new NoteService(noteRepository);
 
     // 1. Initialize Central Widget
     centralWidget = new QWidget(this);
@@ -1055,6 +1061,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
 
 MainWindow::~MainWindow() {
+    if (noteService) {
+        delete noteService;
+    }
     if (noteRepository) {
         delete noteRepository;
     }
@@ -1139,53 +1148,24 @@ void MainWindow::applyCustomStyles() {
 void MainWindow::createSnapshotForCurrentNote() {
     // Auto-create a snapshot when a note is saved.
     // This captures the exact state of title and content at save time.
-    if (!currentNote || !noteRepository) {
+    if (!currentNote || !noteService) {
         return;
     }
 
     qDebug() << "[MainWindow::createSnapshotForCurrentNote] Creating snapshot for note ID:" << currentNote->noteId();
 
-    // Create snapshot object with current title and content
-    Snapshot *snapshot = new Snapshot(
-        currentNote->noteId(),
-        currentNote->title(),
-        currentNote->content()
-    );
-    snapshot->setSecured(currentNote->isSecured());
-
-    // If the current note is secured and already has encryption metadata,
-    // copy that metadata into the snapshot so we don't re-encrypt the same
-    // plaintext when saving the snapshot immediately after saving the note.
-    if (currentNote->isSecured()) {
-        snapshot->setEncryptionSalt(currentNote->encryptionSalt());
-        snapshot->setEncryptionIv(currentNote->encryptionIv());
-        snapshot->setEncryptionTag(currentNote->encryptionTag());
-    }
-
-    // Save snapshot to database. If the current note is secured and already
-    // has encryption metadata, avoid passing the password so the repository
-    // will treat the snapshot content as already-encrypted.
-    bool saved = false;
-    if (currentNote->isSecured()) {
-        if (!currentNote->encryptionSalt().isEmpty()) {
-            saved = noteRepository->saveSnapshot(*snapshot, QString());
-        } else {
-            saved = noteRepository->saveSnapshot(*snapshot, sessionPassword);
-        }
-    } else {
-        saved = noteRepository->saveSnapshot(*snapshot, QString());
-    }
-
-    if (saved) {
-        qDebug() << "[MainWindow::createSnapshotForCurrentNote] Snapshot created with ID:" << snapshot->snapshotId();
+    QString snapshotError;
+    if (noteService && noteService->saveSnapshotForNote(*currentNote, currentNote->isSecured() ? sessionPassword : QString(), &snapshotError)) {
+        qDebug() << "[MainWindow::createSnapshotForCurrentNote] Snapshot created for note ID:" << currentNote->noteId();
         
         // Enforce max 2 snapshots per note
         enforceMaxSnapshotLimit();
     } else {
+        if (!snapshotError.isEmpty()) {
+            qWarning() << "[MainWindow::createSnapshotForCurrentNote]" << snapshotError;
+        }
         qWarning() << "[MainWindow::createSnapshotForCurrentNote] Failed to save snapshot";
     }
-
-    delete snapshot;
 }
 
 void MainWindow::enforceMaxSnapshotLimit() {
