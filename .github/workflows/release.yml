@@ -58,29 +58,21 @@ jobs:
           mkdir AstraNotesTaker
           copy $exePath AstraNotesTaker/
 
-          # 1. Run windeployqt as usual
+          # 1. Run windeployqt
           $deployTool = Get-ChildItem -Path "$env:Qt6_DIR" -Recurse -Filter "windeployqt.exe" | Select-Object -First 1 -ExpandProperty FullName
           & $deployTool --release --no-translations --compiler-runtime AstraNotesTaker/AstraNotes.exe
           
-          # 2. FIND AND COPY OPENSSL DLLs
-          # jurplel/install-qt-action usually places OpenSSL in the Qt bin directory
-          Write-Host "Searching for OpenSSL DLLs in $env:Qt6_DIR"
-          $sslDlls = Get-ChildItem -Path "$env:Qt6_DIR" -Recurse -Include "libcrypto-3*.dll", "libssl-3*.dll"
-          foreach ($dll in $sslDlls) {
-              copy $dll.FullName AstraNotesTaker/
-              Write-Host "Bundled: $($dll.Name)"
+          # 2. FIX: Copy OpenSSL DLLs from the ACTUAL OpenSSL install path
+          # We know from logs it is at C:\Program Files\OpenSSL\bin
+          Write-Host "Bundling OpenSSL DLLs from System Path..."
+          copy "C:\Program Files\OpenSSL\bin\libcrypto-3-x64.dll" AstraNotesTaker/
+          copy "C:\Program Files\OpenSSL\bin\libssl-3-x64.dll" AstraNotesTaker/
+
+          # 3. FIX: Copy the modules folder if it exists there
+          if (Test-Path "C:\Program Files\OpenSSL\bin\ossl-modules") {
+              xcopy /E /I "C:\Program Files\OpenSSL\bin\ossl-modules" AstraNotesTaker/ossl-modules
           }
 
-          # 3. COPY OSSL-MODULES (CRITICAL for Argon2id in OpenSSL 3.0)
-          # Your code expects: appDir + "/ossl-modules"
-          $osslModulesDir = Get-ChildItem -Path "$env:Qt6_DIR" -Recurse -Filter "ossl-modules" -Directory | Select-Object -First 1
-          if ($osslModulesDir) {
-              xcopy /E /I $osslModulesDir.FullName AstraNotesTaker/ossl-modules
-              Write-Host "Bundled: ossl-modules folder"
-          } else {
-              Write-Warning "ossl-modules folder not found! Argon2id might fail."
-          }
-          
           # 4. Zip it up
           7z a ../AstraNotes-Windows.zip "AstraNotesTaker/*"
 
