@@ -179,3 +179,103 @@ This sprint plan follows the dependency chain from the user stories:
 - then extend them with plugins,
 - then finish with trash/retention,
 - and finally harden performance and recovery.
+
+---
+
+## Phase 5: UI Search, Shutdown, and Recovery
+
+**Goal**: Finish the user-facing editing workflow and recoverability features that depend on the stable note, repository, and plugin foundations.
+
+**Primary user stories**:
+- Story 3: Search Within Current Open Note
+- Story 10: In-Note Search with Match Count and Navigation
+- Story 15: Graceful Shutdown with Unsaved-Edit Recovery
+
+**What gets implemented**:
+- Real-time in-note search with highlighting, match counts, and next/previous navigation
+- Search UI state for no matches, wraparound navigation, and keyboard-friendly controls
+- Unsaved-change detection on exit with Save All, Discard All, and Cancel
+- Recovery prompt and state restoration on restart after a crash or power loss
+
+**Exit criteria**:
+- Users can search within the current note and navigate matches reliably.
+- The app prompts before exit when there are unsaved changes.
+- Restart recovery behavior is documented and exercised in execution evidence.
+
+---
+
+## Phase 6: Global Search, Metadata, and Version History
+
+**Goal**: Add repository-backed discovery and note history features once the core UI flow is stable.
+
+**Primary user stories**:
+- Story 4: Search Across All Saved Notes
+- Story 7: Note Metadata and Versioning with Snapshots
+- Story 14: Automatic Snapshot Creation on Save
+
+**What gets implemented**:
+- Global search over titles, metadata, and indexed fields
+- Metadata display for created and last-modified timestamps
+- Snapshot creation on save and snapshot limit enforcement
+- Snapshot restore with cache invalidation and safe fallback behavior
+
+**Exit criteria**:
+- Users can search across saved notes without loading full note bodies into memory.
+- Metadata and snapshot history are persisted and retrievable.
+- Snapshot rotation stays capped at two entries per note.
+
+---
+
+## Phase 7: Security, Encryption, and Auditability
+
+**Goal**: Protect private note content and make sensitive operations traceable.
+
+**Primary user stories**:
+- Story 6: Encrypt Private Notes
+- Story 12: Encryption with Argon2id Key Derivation and IV Management
+- Story 16: Immutable Audit Log for Note Operations
+- Story 17: Database Security and SQL Injection Prevention
+
+**What gets implemented**:
+- Password-gated AES-256-GCM encryption for private notes
+- Argon2id key derivation and IV handling
+- Immutable append-only audit logging for note and encryption operations
+- Input validation and prepared-statement hardening for all database access
+
+**Exit criteria**:
+- Private notes encrypt and decrypt correctly with the expected password flow.
+- Audit logging records the security-sensitive operations.
+- Database operations remain parameterized and resistant to injection.
+
+---
+
+## Phase 8: Trash, Retention, and Release Hardening
+
+**Goal**: Complete the note lifecycle and finish the project with verification, retention, and release-quality checks.
+
+**Primary user stories / requirements**:
+- Story 8: Delete One or More Notes
+- Story 13: Trash with 14-Day Retention and Automatic Purge
+- NFR1: Performance targets
+- NFR3: Crash recovery via SQLite WAL with graceful shutdown on normal exit
+
+**What gets implemented**:
+- Single and bulk delete workflows that move notes into Trash
+- Restore and scheduled purge behavior for the retention window
+- Performance validation for save, load, and search flows
+- Final crash-recovery and shutdown verification across the full stack
+
+**Exit criteria**:
+- Deleted notes move to Trash instead of being removed immediately.
+- Purge and restore are transactional and repeatable.
+- Performance and recovery behavior are documented in execution evidence.
+
+---
+
+## Recommended Build Order for the Next Work Chunk
+
+1. Implement Phase 5 search and shutdown behavior.
+2. Add the tracker doc so completed work is visible immediately.
+3. Use the tracker to mark completed stories as code lands.
+4. Move into Phase 6 global search and snapshots.
+5. Finish with Phase 7 security and Phase 8 trash/hardening.

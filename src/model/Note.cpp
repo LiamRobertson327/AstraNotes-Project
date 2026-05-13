@@ -34,6 +34,22 @@ void Note::setLastModified(const QDateTime& dateTime) {
     m_lastModified = dateTime;
 }
 
+void Note::setSecured(bool secured) {
+    m_isSecured = secured;
+}
+
+void Note::setEncryptionSalt(const QString &salt) {
+    m_encryptionSalt = salt;
+}
+
+void Note::setEncryptionIv(const QString &iv) {
+    m_encryptionIv = iv;
+}
+
+void Note::setEncryptionTag(const QString &tag) {
+    m_encryptionTag = tag;
+}
+
 void Note::display() const {
     qInfo().noquote() << "[" + QString::number(m_noteId) + "] " + m_title;
     qInfo().noquote() << "Last Modified:" << m_lastModified.toString(Qt::ISODate);
@@ -43,5 +59,8 @@ void Note::display() const {
 // INote interface implementations
 QString Note::displayText() const {
     QString t = m_title.isEmpty() ? "(Untitled)" : m_title;
+    if (m_isSecured) {
+        t = QString::fromUtf8("🔒 ") + t;
+    }
     return t + "\n" + m_createdAt.toString("MMM dd, yyyy");
 }

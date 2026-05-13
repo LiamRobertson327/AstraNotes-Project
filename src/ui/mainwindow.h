@@ -16,6 +16,12 @@ class SqliteNoteRepository;
 #include <QStackedWidget>
 #include <QButtonGroup>
 #include <QToolBar>
+#include <QVector>
+#include <QTimer>
+#include <QCheckBox>
+
+class QCloseEvent;
+class QKeyEvent;
 
 class Note;  // Forward declaration for Phase 1
 
@@ -32,21 +38,40 @@ private:
         // Repository for persistence (Phase 4)
         SqliteNoteRepository *noteRepository;
     QLineEdit *searchBar;
+    QPushButton *searchPrevButton;
+    QPushButton *searchNextButton;
+    QLabel *searchMatchLabel;
     QPushButton *newButton;
     QLabel *saveIndicator;
     QPushButton *saveButton;
+    QPushButton *historyButton;
+    QCheckBox *secureToggle;
+    QCheckBox *autoSaveToggle;
+    QTimer *autoSaveTimer;
+    bool autoSaveEnabled;
+    QString sessionPassword;
 
     // --- Left Sidebar (Saved Notes) ---
     QLabel *listTitle;
     QListWidget *noteList;
+    // Pagination state for large note collections (Phase 6)
+    int notesPageSize;
+    int notesCurrentOffset;
+    bool notesAllLoaded;
 
     // --- Right Editor Area ---
     QLineEdit *titleBar;
+    QLabel *metadataLabel;
     QToolBar *formattingToolbar;
     
         // Current note and type state (Phase 1)
         Note *currentNote;
         QString currentTypeId;
+        bool isLoadingDocument;
+        bool hasUnsavedChanges;
+        QString currentSearchQuery;
+        QVector<QPair<int, int>> currentSearchMatches;
+        int currentSearchMatchIndex;
     
     // Mode Selection Buttons
     QPushButton *btnWrite;
@@ -73,8 +98,33 @@ private:
     void setNoteType(const QString &typeId);  // Phase 1: Update UI based on note type
     void populateFormattingToolbar(const QString &typeId);  // Phase 3: Populate toolbar from plugin
     void loadNotesFromDatabase();  // Phase 5: Load all saved notes on startup
+    void loadNotesPage(int offset); // Phase 6: Load a page of notes into the sidebar
+    void onNoteListScrolled();      // Phase 6: Handle scrollbar events for lazy-load
     void loadNoteIntoEditor(qint64 noteId);  // Phase 5: Load a specific note into the editor
     void createNewNote(const QString &typeId);  // Create a new note of specified type
+    void updateSearchState(const QString &query);
+    void updateSavedNotesSearchState(const QString &query);
+    void highlightCurrentTitleSearch(const QString &query);
+    void navigateSearchMatch(int direction);
+    void applySearchHighlight();
+    void updateMetadataDisplay();
+    bool promptForSessionPassword();
+    bool promptForPassword(const QString &title, const QString &label, QString *password);
+    QTextEdit *activeSearchEditor() const;
+    void setUnsavedChanges(bool dirty);
+    bool saveCurrentNote(bool createSnapshot = true);
+    bool confirmUnsavedChanges(const QString &actionText);
+    void createSnapshotForCurrentNote();  // Phase 6: FR8 - Auto-create snapshot on save
+    void enforceMaxSnapshotLimit();       // Phase 6: FR8 - Delete oldest if exceeding max 2 per note
+    void showSnapshotHistoryDialog();      // Phase 6: FR8 - Display snapshot list and revert/delete UI
+
+private slots:
+    void handleAutoSaveTimeout();
+    void onRevertToSnapshot(qint64 snapshotId);  // Phase 6: FR8 - Revert note to a snapshot
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 };
 
 #endif // MAINWINDOW_H

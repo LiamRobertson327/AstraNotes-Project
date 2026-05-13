@@ -9,6 +9,8 @@ int main(int argc, char *argv[]) {
     // Initialize Qt application
     QApplication app(argc, argv);
 
+    qInstallMessageHandler(nullptr);
+
     qDebug() << "[main] QApplication created";
     qDebug() << "[main] Creating MainWindow...";
 
