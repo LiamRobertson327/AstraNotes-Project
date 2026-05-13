@@ -71,18 +71,40 @@ install(SCRIPT ${deploy_script})
 # so the "Brain" can find its "Tools" even after a restart.
 # --- Portable OpenSSL Module Handling ---
 if(OpenSSL_FOUND AND WIN32)
-    # Get the actual path to libcrypto.lib (ignoring the "optimized;debug" list)
-    # We use the FIRST item in the list if it's a list
-    list(GET OPENSSL_CRYPTO_LIBRARIES 0 SECURE_LIB_PATH)
-    get_filename_component(OPENSSL_DIR "${SECURE_LIB_PATH}" DIRECTORY)
-    
-    # Go up one level from 'lib' to find 'bin' or 'lib/ossl-modules'
-    # On many Windows installs, it's in bin/ossl-modules or lib/ossl-modules
-    set(OSSL_MODULES_SRC "${OPENSSL_DIR}/ossl-modules")
+    # 1. Clean the list: Get the first actual path from the OpenSSL_CRYPTO_LIBRARIES list
+    # This removes the "optimized" and "debug" keywords
+    foreach(lib ${OPENSSL_CRYPTO_LIBRARIES})
+        if(EXISTS "${lib}")
+            set(REAL_CRYPTO_LIB "${lib}")
+            break()
+        endif()
+    endforeach()
 
-    add_custom_command(TARGET AstraNotes POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:AstraNotes>/ossl-modules"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${OSSL_MODULES_SRC}" "$<TARGET_FILE_DIR:AstraNotes>/ossl-modules"
-        COMMENT "Deploying OpenSSL modules for portable encryption"
+    # 2. Derive the directory. 
+    # Usually: C:/Program Files/OpenSSL/lib/VC/x64/MD/libcrypto.lib
+    get_filename_component(LIB_DIR "${REAL_CRYPTO_LIB}" DIRECTORY)
+    
+    # 3. Find the modules folder by looking relative to the lib path
+    # We check common locations for OpenSSL 3.x on Windows
+    find_path(OSSL_MODULES_DIR_PATH
+        NAMES legacy.dll default.dll
+        PATHS 
+            "${LIB_DIR}/ossl-modules"
+            "${LIB_DIR}/../ossl-modules"
+            "${LIB_DIR}/../../ossl-modules"
+            "C:/Program Files/OpenSSL/lib/ossl-modules"
+        NO_DEFAULT_PATH
     )
+
+    if(OSSL_MODULES_DIR_PATH)
+        message(STATUS "Found OpenSSL modules at: ${OSSL_MODULES_DIR_PATH}")
+        
+        add_custom_command(TARGET AstraNotes POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:AstraNotes>/ossl-modules"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory "${OSSL_MODULES_DIR_PATH}" "$<TARGET_FILE_DIR:AstraNotes>/ossl-modules"
+            COMMENT "Deploying OpenSSL modules to: $<TARGET_FILE_DIR:AstraNotes>/ossl-modules"
+        )
+    else()
+        message(WARNING "Could not find ossl-modules directory for deployment!")
+    endif()
 endif()
