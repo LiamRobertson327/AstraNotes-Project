@@ -1157,38 +1157,11 @@ void MainWindow::createSnapshotForCurrentNote() {
     QString snapshotError;
     if (noteService && noteService->saveSnapshotForNote(*currentNote, currentNote->isSecured() ? sessionPassword : QString(), &snapshotError)) {
         qDebug() << "[MainWindow::createSnapshotForCurrentNote] Snapshot created for note ID:" << currentNote->noteId();
-        
-        // Enforce max 2 snapshots per note
-        enforceMaxSnapshotLimit();
     } else {
         if (!snapshotError.isEmpty()) {
             qWarning() << "[MainWindow::createSnapshotForCurrentNote]" << snapshotError;
         }
         qWarning() << "[MainWindow::createSnapshotForCurrentNote] Failed to save snapshot";
-    }
-}
-
-void MainWindow::enforceMaxSnapshotLimit() {
-    // Ensure max 2 snapshots per note (FR8 requirement).
-    // If a note now has more than 2 snapshots, delete the oldest one.
-    if (!currentNote || !noteRepository) {
-        return;
-    }
-
-    qDebug() << "[MainWindow::enforceMaxSnapshotLimit] Checking snapshot count for note ID:" << currentNote->noteId();
-
-    QVector<Snapshot*> snapshots = noteRepository->getSnapshotsByNoteId(currentNote->noteId());
-
-    if (snapshots.size() > 2) {
-        qDebug() << "[MainWindow::enforceMaxSnapshotLimit] Note has" << snapshots.size() << "snapshots, deleting oldest";
-        if (noteRepository->deleteOldestSnapshotForNote(currentNote->noteId())) {
-            qDebug() << "[MainWindow::enforceMaxSnapshotLimit] Oldest snapshot deleted";
-        }
-    }
-
-    // Clean up
-    for (Snapshot *snap : snapshots) {
-        delete snap;
     }
 }
 

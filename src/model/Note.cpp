@@ -3,8 +3,8 @@
 
 Note::Note(QString noteTypeId, QString noteTitle)
     : m_typeId(std::move(noteTypeId)), m_title(std::move(noteTitle)) {
-    m_createdAt = QDateTime::currentDateTimeUtc();
-    m_lastModified = QDateTime::currentDateTimeUtc();
+    m_createdAt = QDateTime::currentDateTime();
+    m_lastModified = QDateTime::currentDateTime();
 }
 
 void Note::setNoteId(qint64 newId) {
@@ -13,17 +13,17 @@ void Note::setNoteId(qint64 newId) {
 
 void Note::setTitle(const QString& newTitle) {
     m_title = newTitle;
-    m_lastModified = QDateTime::currentDateTimeUtc();
+    m_lastModified = QDateTime::currentDateTime();
 }
 
 void Note::setContent(const QString& newContent) {
     m_content = newContent;
-    m_lastModified = QDateTime::currentDateTimeUtc();
+    m_lastModified = QDateTime::currentDateTime();
 }
 
 void Note::setTypeId(const QString& newTypeId) {
     m_typeId = newTypeId;
-    m_lastModified = QDateTime::currentDateTimeUtc();
+    m_lastModified = QDateTime::currentDateTime();
 }
 
 void Note::setCreatedAt(const QDateTime& dateTime) {
@@ -62,5 +62,5 @@ QString Note::displayText() const {
     if (m_isSecured) {
         t = QString::fromUtf8("🔒 ") + t;
     }
-    return t + "\n" + m_createdAt.toString("MMM dd, yyyy");
+    return t + "\n" + m_createdAt.toString("yyyy-MM-dd HH:mm:ss");
 }

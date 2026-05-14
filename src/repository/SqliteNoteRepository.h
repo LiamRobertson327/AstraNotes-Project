@@ -46,6 +46,7 @@ public:
     bool deleteOldestSnapshotForNote(qint64 noteId);
     // isConnected(): Utility to check if database is open and ready.
     bool isConnected() const { return db.isOpen(); }
+    bool pruneOldSnapshots(qint64 noteId);
 
 private:
     QSqlDatabase db;                // Qt SQL database object (SQLite driver)

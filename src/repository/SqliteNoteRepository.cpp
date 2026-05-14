@@ -636,12 +636,46 @@ int SqliteNoteRepository::countTitleMatches(const QString &query) {
 // Snapshot Methods (Phase 6: FR8 - Version History)
 // ============================================================================
 
+bool SqliteNoteRepository::pruneOldSnapshots(qint64 noteId) {
+    QSqlQuery query(db);
+    query.prepare(R"(
+        DELETE FROM snapshots
+        WHERE note_id = :note_id
+        AND id NOT IN (
+            SELECT id FROM snapshots
+            WHERE note_id = :note_id2
+            ORDER BY created_at DESC, id DESC
+            LIMIT 2
+        )
+    )");
+    query.bindValue(":note_id", noteId);
+    query.bindValue(":note_id2", noteId);
+
+    if (!query.exec()) {
+        qWarning() << "[SqliteNoteRepository::pruneOldSnapshots] Cleanup failed:" << query.lastError().text();
+        return false;
+    } else {
+        if (query.numRowsAffected() > 0) {
+            qDebug() << "[SqliteNoteRepository::pruneOldSnapshots] Purged" << query.numRowsAffected() << "old snapshots.";
+        }
+    }
+
+    return true;
+}
+
 bool SqliteNoteRepository::saveSnapshot(Snapshot &snapshot) {
     return saveSnapshot(snapshot, QString());
 }
 
 bool SqliteNoteRepository::saveSnapshot(Snapshot &snapshot, const QString &password) {
     qDebug() << "[SqliteNoteRepository::saveSnapshot] Saving snapshot for note ID:" << snapshot.noteId();
+
+    // Keep insert/update + pruning in one atomic unit to avoid lock contention
+    // and ensure snapshot limit enforcement can't diverge from persisted state.
+    if (!db.transaction()) {
+        qWarning() << "[SqliteNoteRepository::saveSnapshot] Failed to begin transaction:" << db.lastError().text();
+        return false;
+    }
 
     QString contentToPersist = snapshot.content();
     QString saltToPersist = snapshot.encryptionSalt();
@@ -682,6 +716,7 @@ bool SqliteNoteRepository::saveSnapshot(Snapshot &snapshot, const QString &passw
     }
 
     QSqlQuery query(db);
+    bool ok = false;
 
     if (snapshot.snapshotId() == -1) {
         query.prepare(R"(
@@ -699,43 +734,66 @@ bool SqliteNoteRepository::saveSnapshot(Snapshot &snapshot, const QString &passw
 
         if (!query.exec()) {
             qWarning() << "[SqliteNoteRepository::saveSnapshot] Failed to insert snapshot:" << query.lastError().text();
+            db.rollback();
             return false;
         }
 
         snapshot.setSnapshotId(query.lastInsertId().toLongLong());
         qDebug() << "[SqliteNoteRepository::saveSnapshot] Snapshot saved with ID:" << snapshot.snapshotId();
+        ok = true;
+    } else {
+        query.prepare(R"(
+            UPDATE snapshots
+            SET note_id = :note_id,
+                title = :title,
+                content = :content,
+                is_secured = :is_secured,
+                encryption_salt = :encryption_salt,
+                encryption_iv = :encryption_iv,
+                encryption_tag = :encryption_tag,
+                created_at = :created_at
+            WHERE id = :id
+        )");
+        query.bindValue(":note_id", snapshot.noteId());
+        query.bindValue(":title", snapshot.title());
+        query.bindValue(":content", contentToPersist);
+        query.bindValue(":is_secured", snapshot.isSecured() ? 1 : 0);
+        query.bindValue(":encryption_salt", saltToPersist);
+        query.bindValue(":encryption_iv", ivToPersist);
+        query.bindValue(":encryption_tag", tagToPersist);
+        query.bindValue(":created_at", snapshot.createdAt());
+        query.bindValue(":id", snapshot.snapshotId());
+
+        if (!query.exec()) {
+            qWarning() << "[SqliteNoteRepository::saveSnapshot] Failed to update snapshot:" << query.lastError().text();
+            db.rollback();
+            return false;
+        }
+
+        qDebug() << "[SqliteNoteRepository::saveSnapshot] Snapshot updated with ID:" << snapshot.snapshotId();
+        ok = true;
+    }
+
+    if (ok) {
+        // Finalize the previous statement before issuing another query.
+        query.finish();
+        query.clear();
+
+        if (!pruneOldSnapshots(snapshot.noteId())) {
+            db.rollback();
+            return false;
+        }
+
+        if (!db.commit()) {
+            qWarning() << "[SqliteNoteRepository::saveSnapshot] Failed to commit transaction:" << db.lastError().text();
+            db.rollback();
+            return false;
+        }
         return true;
     }
 
-    query.prepare(R"(
-        UPDATE snapshots
-        SET note_id = :note_id,
-            title = :title,
-            content = :content,
-            is_secured = :is_secured,
-            encryption_salt = :encryption_salt,
-            encryption_iv = :encryption_iv,
-            encryption_tag = :encryption_tag,
-            created_at = :created_at
-        WHERE id = :id
-    )");
-    query.bindValue(":note_id", snapshot.noteId());
-    query.bindValue(":title", snapshot.title());
-    query.bindValue(":content", contentToPersist);
-    query.bindValue(":is_secured", snapshot.isSecured() ? 1 : 0);
-    query.bindValue(":encryption_salt", saltToPersist);
-    query.bindValue(":encryption_iv", ivToPersist);
-    query.bindValue(":encryption_tag", tagToPersist);
-    query.bindValue(":created_at", snapshot.createdAt());
-    query.bindValue(":id", snapshot.snapshotId());
-
-    if (!query.exec()) {
-        qWarning() << "[SqliteNoteRepository::saveSnapshot] Failed to update snapshot:" << query.lastError().text();
-        return false;
-    }
-
-    qDebug() << "[SqliteNoteRepository::saveSnapshot] Snapshot updated with ID:" << snapshot.snapshotId();
-    return true;
+    db.rollback();
+    return false;
 }
 
 QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {

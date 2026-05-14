@@ -3,7 +3,7 @@
 
 Snapshot::Snapshot(qint64 noteId, const QString& title, const QString& content)
     : m_noteId(noteId), m_title(title), m_content(content) {
-    m_createdAt = QDateTime::currentDateTimeUtc();
+    m_createdAt = QDateTime::currentDateTime();
 }
 
 void Snapshot::setSnapshotId(qint64 newId) {
@@ -47,5 +47,5 @@ QString Snapshot::displayText() const {
     if (m_isSecured) {
         t = QString::fromUtf8("🔒 ") + t;
     }
-    return t + "\n" + m_createdAt.toString("MMM dd, yyyy hh:mm AP");
+    return t + "\n" + m_createdAt.toString("yyyy-MM-dd HH:mm:ss");
 }

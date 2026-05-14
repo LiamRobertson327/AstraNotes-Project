@@ -117,7 +117,6 @@ private:
     bool saveCurrentNote(bool createSnapshot = true);
     bool confirmUnsavedChanges(const QString &actionText);
     void createSnapshotForCurrentNote();  // Phase 6: FR8 - Auto-create snapshot on save
-    void enforceMaxSnapshotLimit();       // Phase 6: FR8 - Delete oldest if exceeding max 2 per note
     void showSnapshotHistoryDialog();      // Phase 6: FR8 - Display snapshot list and revert/delete UI
 
 private slots:
