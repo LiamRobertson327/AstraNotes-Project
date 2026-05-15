@@ -47,11 +47,18 @@ private:
     QLabel *saveIndicator;
     QPushButton *saveButton;
     QPushButton *historyButton;
+    QPushButton *trashButton;
+    QPushButton *deleteButton;
+    QPushButton *settingsButton;
     QCheckBox *secureToggle;
     QCheckBox *autoSaveToggle;
     QTimer *autoSaveTimer;
     bool autoSaveEnabled;
+    int autoSaveDebounceMs;
     QString sessionPassword;
+    QTimer *purgeTimer;
+    int retentionDays;
+    bool autoPurgeEnabled;
 
     // --- Left Sidebar (Saved Notes) ---
     QLabel *listTitle;
@@ -118,6 +125,8 @@ private:
     bool confirmUnsavedChanges(const QString &actionText);
     void createSnapshotForCurrentNote();  // Phase 6: FR8 - Auto-create snapshot on save
     void showSnapshotHistoryDialog();      // Phase 6: FR8 - Display snapshot list and revert/delete UI
+    void showTrashDialog();                // Phase 8: Show trashed notes dialog
+    void showSettingsDialog();             // Phase 8: Settings for retention and purge
 
 private slots:
     void handleAutoSaveTimeout();

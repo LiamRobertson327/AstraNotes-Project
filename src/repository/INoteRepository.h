@@ -44,6 +44,13 @@ public:
     //                    Returns matching notes ordered by most recently modified.
     //                    Caller assumes ownership of returned Note* pointers.
     virtual QVector<Note*> searchByContent(const QString &query) = 0;
+
+    // Trash / Retention API (Phase 8)
+    virtual QVector<Note*> getTrashedNotes() = 0;
+    virtual bool trashNote(qint64 id) = 0;
+    virtual bool restoreNote(qint64 id) = 0;
+    // Purge trashed notes older than `olderThanDays`. Default 14 days.
+    virtual bool purgeTrashedNotes(int olderThanDays = 14) = 0;
 };
 
 #endif // INOTEREPOSITORY_H

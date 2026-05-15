@@ -20,7 +20,7 @@
 | Phase 5 | UI Search, Shutdown, and Recovery | [x] | Completed and integrated |
 | Phase 6 | Global Search, Metadata, and Version History | [x] | Completed and integrated |
 | Phase 7 | Security, Encryption, and Auditability | [x] | Completed and integrated |
-| Phase 8 | Trash, Retention, and Release Hardening | [ ] | Planned next |
+| Phase 8 | Trash, Retention, and Release Hardening | [~] | In progress |
 | Phase 9 | Strict MVC Refactor | [ ] | Planned after Phase 8 is implemented |
 
 ---
@@ -47,8 +47,8 @@
 
 ### In Progress / Planned Stories
 
-- [ ] Story 8: Delete One or More Notes
-- [ ] Story 13: Trash with 14-Day Retention and Automatic Purge
+- [~] Story 8: Delete One or More Notes
+- [~] Story 13: Trash with 14-Day Retention and Automatic Purge
 - [ ] Story 16: Immutable Audit Log for Note Operations
 
 ---
@@ -101,6 +101,21 @@
 - **Base64 / Tag Integrity:** Encryption and decryption paths now preserve Base64 payloads and validate the 128-bit authentication tag before decryption finalization.
 
 - Phase 7 security work is complete and the encryption flow is now stable for secured note save/load and snapshot persistence.
+
+### Phase 8
+- **Scope:** Trash (soft-delete / recycle bin), retention (14-day automatic purge), and release hardening (packaging, manifest/installer checks, smoke QA).
+- **Acceptance Criteria:**
+  - Deleting notes moves them to a `trash` state and removes them from normal lists.
+  - Users can restore trashed notes within 14 days.
+  - A background or startup purge task permanently removes notes older than 14 days from `trash`.
+  - All operations (delete/restore/purge) are transactional and leave the DB in a consistent state.
+  - Snapshot retention respects encryption metadata (no double-encryption) and reuses primary-note ciphertext for history entries.
+  - Release hardening checklist: reproducible build artifact, packaging metadata (version, checksum), and a smoke-run that exercises save/load/delete/restore flows.
+- **Planned Implementation Notes:**
+  - Add `is_trashed` and `trashed_at` columns to `notes` table and move delete/restore logic into `SqliteNoteRepository`.
+  - Implement `purgeTrashedNotes()` invoked by a scheduler or at startup (configurable interval).
+  - Ensure `saveSnapshot()` and `save()` are transactional when operating on secured notes to avoid double-encrypt and DB-lock races.
+  - Add release packaging scripts and a simple smoke-test runner to validate core flows after build.
 
 ### Phase 9
 - Planned only after Phase 8 is completed and verified.

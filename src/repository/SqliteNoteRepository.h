@@ -44,6 +44,13 @@ public:
     Snapshot* getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword = nullptr);
     bool deleteSnapshotById(qint64 snapshotId);
     bool deleteOldestSnapshotForNote(qint64 noteId);
+    // Trash/Retention (Phase 8)
+    QVector<Note*> getTrashedNotes();
+    bool trashNote(qint64 id);
+    bool restoreNote(qint64 id);
+    bool purgeTrashedNotes(int olderThanDays = 14);
+    // Soft-delete (move to trash) API used by UI: mark notes trashed without removing snapshots
+    bool markNoteTrashed(qint64 id);
     // isConnected(): Utility to check if database is open and ready.
     bool isConnected() const { return db.isOpen(); }
     bool pruneOldSnapshots(qint64 noteId);

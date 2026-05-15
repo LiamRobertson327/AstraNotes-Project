@@ -9,6 +9,17 @@
 #include <QMessageBox>
 
 namespace {
+QDateTime toUtcDateTime(const QVariant &value) {
+    QDateTime dateTime = QDateTime::fromString(value.toString(), "yyyy-MM-dd HH:mm:ss");
+    if (!dateTime.isValid()) {
+        dateTime = value.toDateTime();
+    }
+    if (!dateTime.isValid()) {
+        return dateTime;
+    }
+    return QDateTime(dateTime.date(), dateTime.time(), Qt::UTC);
+}
+
 bool ensureColumnExists(QSqlDatabase &db, const QString &tableName, const QString &columnName, const QString &columnDefinition) {
     QSqlQuery pragma(db);
     if (!pragma.exec(QString("PRAGMA table_info(%1)").arg(tableName))) {
@@ -139,6 +150,9 @@ bool SqliteNoteRepository::createTablesIfNeeded() {
     ensureColumnExists(db, "notes", "encryption_salt", "encryption_salt TEXT");
     ensureColumnExists(db, "notes", "encryption_iv", "encryption_iv TEXT");
     ensureColumnExists(db, "notes", "encryption_tag", "encryption_tag TEXT");
+    // Phase 8: Trash/Retention columns
+    ensureColumnExists(db, "notes", "is_trashed", "is_trashed INTEGER DEFAULT 0");
+    ensureColumnExists(db, "notes", "trashed_at", "trashed_at DATETIME");
     // Phase 6 (NFR1): Create FTS5 virtual table for title and content indexing
     // Provides fast full-text search for 10k+ notes without manual index management
     ensureColumnExists(db, "snapshots", "is_secured", "is_secured INTEGER DEFAULT 0");
@@ -377,8 +391,8 @@ Note* SqliteNoteRepository::getById(qint64 id) {
 
     Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
     note->setNoteId(query.value("id").toLongLong());
-    note->setCreatedAt(query.value("created_at").toDateTime());
-    note->setLastModified(query.value("modified_at").toDateTime());
+    note->setCreatedAt(toUtcDateTime(query.value("created_at")));
+    note->setLastModified(toUtcDateTime(query.value("modified_at")));
     note->setSecured(query.value("is_secured").toInt() == 1);
     note->setEncryptionSalt(query.value("encryption_salt").toString());
     note->setEncryptionIv(query.value("encryption_iv").toString());
@@ -412,8 +426,8 @@ Note* SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wr
 
     Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
     note->setNoteId(query.value("id").toLongLong());
-    note->setCreatedAt(query.value("created_at").toDateTime());
-    note->setLastModified(query.value("modified_at").toDateTime());
+    note->setCreatedAt(toUtcDateTime(query.value("created_at")));
+    note->setLastModified(toUtcDateTime(query.value("modified_at")));
 
     const bool secured = query.value("is_secured").toInt() == 1;
     note->setSecured(secured);
@@ -456,7 +470,7 @@ QVector<Note*> SqliteNoteRepository::getAll() {
     qDebug() << "[SqliteNoteRepository::getAll] Starting getAll";
     QVector<Note*> notes;
     QSqlQuery query(db);
-    query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes ORDER BY modified_at DESC");
+    query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 ORDER BY modified_at DESC");
     
     if (!query.exec()) {
         qWarning() << "[SqliteNoteRepository::getAll] Failed to fetch all notes:" << query.lastError().text();
@@ -468,8 +482,14 @@ QVector<Note*> SqliteNoteRepository::getAll() {
         Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
         note->setNoteId(query.value("id").toLongLong());
         note->setContent(query.value("content").toString());
-        note->setCreatedAt(query.value("created_at").toDateTime());
-        note->setLastModified(query.value("modified_at").toDateTime());
+        note->setCreatedAt(toUtcDateTime(query.value("created_at")));
+        // For trashed listing, prefer trashed_at if available to show purge date
+        QDateTime trashedAt = toUtcDateTime(query.value("trashed_at"));
+        if (trashedAt.isValid()) {
+            note->setLastModified(trashedAt);
+        } else {
+            note->setLastModified(toUtcDateTime(query.value("modified_at")));
+        }
         note->setSecured(query.value("is_secured").toInt() == 1);
         note->setEncryptionSalt(query.value("encryption_salt").toString());
         note->setEncryptionIv(query.value("encryption_iv").toString());
@@ -495,6 +515,86 @@ bool SqliteNoteRepository::deleteById(qint64 id) {
     return true;
 }
 
+QVector<Note*> SqliteNoteRepository::getTrashedNotes() {
+    QVector<Note*> results;
+    QSqlQuery query(db);
+    query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at, trashed_at FROM notes WHERE is_trashed = 1 ORDER BY trashed_at DESC");
+
+    if (!query.exec()) {
+        qWarning() << "[SqliteNoteRepository::getTrashedNotes] Failed to fetch trashed notes:" << query.lastError().text();
+        return results;
+    }
+
+    while (query.next()) {
+        Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+        note->setNoteId(query.value("id").toLongLong());
+        note->setContent(query.value("content").toString());
+        note->setCreatedAt(toUtcDateTime(query.value("created_at")));
+        note->setLastModified(toUtcDateTime(query.value("modified_at")));
+        note->setSecured(query.value("is_secured").toInt() == 1);
+        note->setEncryptionSalt(query.value("encryption_salt").toString());
+        note->setEncryptionIv(query.value("encryption_iv").toString());
+        note->setEncryptionTag(query.value("encryption_tag").toString());
+        results.append(note);
+    }
+
+    return results;
+}
+
+bool SqliteNoteRepository::trashNote(qint64 id) {
+    QSqlQuery query(db);
+    query.prepare("UPDATE notes SET is_trashed = 1, trashed_at = CURRENT_TIMESTAMP WHERE id = :id");
+    query.bindValue(":id", id);
+
+    if (!query.exec()) {
+        qWarning() << "[SqliteNoteRepository::trashNote] Failed to trash note:" << query.lastError().text();
+        return false;
+    }
+
+    qDebug() << "Note trashed with ID:" << id;
+    return true;
+}
+
+bool SqliteNoteRepository::markNoteTrashed(qint64 id) {
+    // Alias to trashNote for backwards compatibility with interface naming.
+    return trashNote(id);
+}
+
+bool SqliteNoteRepository::restoreNote(qint64 id) {
+    QSqlQuery query(db);
+    query.prepare("UPDATE notes SET is_trashed = 0, trashed_at = NULL WHERE id = :id");
+    query.bindValue(":id", id);
+
+    if (!query.exec()) {
+        qWarning() << "[SqliteNoteRepository::restoreNote] Failed to restore note:" << query.lastError().text();
+        return false;
+    }
+
+    qDebug() << "Note restored with ID:" << id;
+    return true;
+}
+
+bool SqliteNoteRepository::purgeTrashedNotes(int olderThanDays) {
+    QSqlQuery query(db);
+    // Permanently delete trashed notes older than the configured retention window.
+    query.prepare(R"(
+        DELETE FROM notes
+        WHERE is_trashed = 1
+        AND trashed_at <= datetime('now', :delta)
+    )");
+    
+    QString delta = QString("-%1 days").arg(olderThanDays);
+    query.bindValue(":delta", delta);
+
+    if (!query.exec()) {
+        qWarning() << "[SqliteNoteRepository::purgeTrashedNotes] Failed to purge trashed notes:" << query.lastError().text();
+        return false;
+    }
+
+    qDebug() << "Purged trashed notes older than" << olderThanDays << "days; rows affected:" << query.numRowsAffected();
+    return true;
+}
+
 bool SqliteNoteRepository::update(const Note &note) {
     return const_cast<SqliteNoteRepository *>(this)->save(const_cast<Note &>(note), QString());
 }
@@ -515,7 +615,8 @@ QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
         query.prepare(R"(
             SELECT n.id, n.typeId, n.title, n.content, n.is_secured, n.encryption_salt, n.encryption_iv, n.encryption_tag, n.created_at, n.modified_at
             FROM notes n
-            WHERE n.id IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH :fts_query)
+            WHERE n.is_trashed = 0
+            AND n.id IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH :fts_query)
             ORDER BY n.modified_at DESC
         )");
         query.addBindValue(query_str);
@@ -523,7 +624,7 @@ QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
         if (!query.exec() || !query.first()) {
             // FTS5 not available or no results; fall back to LIKE
             query.clear();
-            query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE title LIKE :query ORDER BY modified_at DESC");
+            query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND title LIKE :query ORDER BY modified_at DESC");
             query.addBindValue("%" + query_str + "%");
             
             if (!query.exec()) {
@@ -542,8 +643,8 @@ QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
         Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
         note->setNoteId(query.value("id").toLongLong());
         note->setContent(query.value("content").toString());
-        note->setCreatedAt(query.value("created_at").toDateTime());
-        note->setLastModified(query.value("modified_at").toDateTime());
+        note->setCreatedAt(toUtcDateTime(query.value("created_at")));
+        note->setLastModified(toUtcDateTime(query.value("modified_at")));
         note->setSecured(query.value("is_secured").toInt() == 1);
         note->setEncryptionSalt(query.value("encryption_salt").toString());
         note->setEncryptionIv(query.value("encryption_iv").toString());
@@ -563,7 +664,7 @@ QVector<Note*> SqliteNoteRepository::searchByContent(const QString &query_str) {
     // Caller assumes ownership of returned Note* pointers.
     QVector<Note*> results;
     QSqlQuery query(db);
-    query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE content LIKE :query ORDER BY modified_at DESC");
+    query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND content LIKE :query ORDER BY modified_at DESC");
     query.addBindValue("%" + query_str + "%");
     
     if (!query.exec()) {
@@ -575,8 +676,8 @@ QVector<Note*> SqliteNoteRepository::searchByContent(const QString &query_str) {
         Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
         note->setNoteId(query.value("id").toLongLong());
         note->setContent(query.value("content").toString());
-        note->setCreatedAt(query.value("created_at").toDateTime());
-        note->setLastModified(query.value("modified_at").toDateTime());
+        note->setCreatedAt(toUtcDateTime(query.value("created_at")));
+        note->setLastModified(toUtcDateTime(query.value("modified_at")));
         note->setSecured(query.value("is_secured").toInt() == 1);
         note->setEncryptionSalt(query.value("encryption_salt").toString());
         note->setEncryptionIv(query.value("encryption_iv").toString());
@@ -591,7 +692,7 @@ QVector<Note*> SqliteNoteRepository::searchByTitlePaged(const QString &query, in
     QVector<Note*> results;
     QSqlQuery q(db);
     QString pattern = query.trimmed().isEmpty() ? "%%" : ("%" + query + "%");
-    q.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE title LIKE :query ORDER BY modified_at DESC LIMIT :limit OFFSET :offset");
+    q.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND title LIKE :query ORDER BY modified_at DESC LIMIT :limit OFFSET :offset");
     q.addBindValue(pattern);
     q.addBindValue(limit);
     q.addBindValue(offset);
@@ -605,8 +706,8 @@ QVector<Note*> SqliteNoteRepository::searchByTitlePaged(const QString &query, in
         Note *note = new Note(q.value("typeId").toString(), q.value("title").toString());
         note->setNoteId(q.value("id").toLongLong());
         note->setContent(q.value("content").toString());
-        note->setCreatedAt(q.value("created_at").toDateTime());
-        note->setLastModified(q.value("modified_at").toDateTime());
+        note->setCreatedAt(toUtcDateTime(q.value("created_at")));
+        note->setLastModified(toUtcDateTime(q.value("modified_at")));
         note->setSecured(q.value("is_secured").toInt() == 1);
         note->setEncryptionSalt(q.value("encryption_salt").toString());
         note->setEncryptionIv(q.value("encryption_iv").toString());
@@ -620,7 +721,7 @@ QVector<Note*> SqliteNoteRepository::searchByTitlePaged(const QString &query, in
 int SqliteNoteRepository::countTitleMatches(const QString &query) {
     QSqlQuery q(db);
     QString pattern = query.trimmed().isEmpty() ? "%%" : ("%" + query + "%");
-    q.prepare("SELECT COUNT(*) as cnt FROM notes WHERE title LIKE :query");
+    q.prepare("SELECT COUNT(*) as cnt FROM notes WHERE is_trashed = 0 AND title LIKE :query");
     q.addBindValue(pattern);
     if (!q.exec()) {
         qWarning() << "[SqliteNoteRepository::countTitleMatches] Failed to count title matches:" << q.lastError().text();
@@ -819,7 +920,7 @@ QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
             query.value("content").toString()
         );
         snapshot->setSnapshotId(query.value("id").toLongLong());
-        snapshot->setCreatedAt(query.value("created_at").toDateTime());
+        snapshot->setCreatedAt(toUtcDateTime(query.value("created_at")));
         snapshot->setSecured(query.value("is_secured").toInt() == 1);
         snapshot->setEncryptionSalt(query.value("encryption_salt").toString());
         snapshot->setEncryptionIv(query.value("encryption_iv").toString());
@@ -870,7 +971,7 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
         query.value("content").toString()
     );
     snapshot->setSnapshotId(query.value("id").toLongLong());
-    snapshot->setCreatedAt(query.value("created_at").toDateTime());
+    snapshot->setCreatedAt(toUtcDateTime(query.value("created_at")));
     snapshot->setSecured(query.value("is_secured").toInt() == 1);
     snapshot->setEncryptionSalt(query.value("encryption_salt").toString());
     snapshot->setEncryptionIv(query.value("encryption_iv").toString());
@@ -905,7 +1006,7 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString
         query.value("content").toString()
     );
     snapshot->setSnapshotId(query.value("id").toLongLong());
-    snapshot->setCreatedAt(query.value("created_at").toDateTime());
+    snapshot->setCreatedAt(toUtcDateTime(query.value("created_at")));
     snapshot->setSecured(query.value("is_secured").toInt() == 1);
     snapshot->setEncryptionSalt(query.value("encryption_salt").toString());
     snapshot->setEncryptionIv(query.value("encryption_iv").toString());

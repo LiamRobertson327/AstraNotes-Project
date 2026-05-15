@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCoreApplication>
 #include "ui/mainwindow.h"
 
 #include <iostream>
@@ -8,6 +9,9 @@
 int main(int argc, char *argv[]) {
     // Initialize Qt application
     QApplication app(argc, argv);
+    QCoreApplication::setOrganizationName("AstraNotes");
+    QCoreApplication::setOrganizationDomain("astranotes.local");
+    QCoreApplication::setApplicationName("AstraNotes");
 
     qInstallMessageHandler(nullptr);
 

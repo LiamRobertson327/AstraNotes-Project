@@ -1,5 +1,9 @@
 #include "MainWindow.h"
 
+#include "TrashDialog.h"
+#include "SettingsDialog.h"
+#include <QSettings>
+
 #include "../plugins/PluginManager.h"
 #include "../plugins/PlaintextPlugin.h"
 #include "../plugins/MarkdownPlugin.h"
@@ -675,14 +679,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
     // Initialize Phase 5 auto-save members (FR1 requirement)
     autoSaveEnabled = true;
+    QSettings settingsLoad;
+    autoSaveDebounceMs = settingsLoad.value("autoSaveDebounceMs", 3000).toInt();
     autoSaveTimer = new QTimer(this);
-    autoSaveTimer->setInterval(3000);  // 3 seconds debounce as per FR1 (updated)
+    autoSaveTimer->setInterval(autoSaveDebounceMs);
     autoSaveTimer->setSingleShot(true);
 
     // Phase 5: Bind crtl + f to search
     new QShortcut(Qt::CTRL + Qt::Key_F, this, [this](){
     searchBar->setFocus();
     searchBar->selectAll();  // Convenience: pre-select text so user can immediately type
+    });
+
+    // Phase 5: Bind ctrl + s to manual save
+    new QShortcut(Qt::CTRL + Qt::Key_S, this, [this](){
+        saveCurrentNote();
     });
     
         // Phase 2: Register plugins with PluginManager
@@ -741,6 +752,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
     saveButton = new QPushButton("Save");
     historyButton = new QPushButton("History");
+    trashButton = new QPushButton("🗑️");
+    trashButton->setToolTip("Show trashed notes");
+    deleteButton = new QPushButton("Delete");
+    deleteButton->setToolTip("Move selected notes to Trash");
+    settingsButton = new QPushButton("Settings");
     secureToggle = new QCheckBox("Secure");
     secureToggle->setToolTip("Encrypt this note when saved");
     
@@ -757,6 +773,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     headerLayout->addWidget(saveIndicator);
     headerLayout->addWidget(saveButton);
     headerLayout->addWidget(historyButton);
+    headerLayout->addWidget(trashButton);
+    headerLayout->addWidget(deleteButton);
+    headerLayout->addWidget(settingsButton);
     headerLayout->addWidget(secureToggle);
     headerLayout->addWidget(autoSaveToggle);  // Add auto-save toggle to header
     rootLayout->addLayout(headerLayout); // RootLayout is defined, so this works!
@@ -778,6 +797,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     noteList = new QListWidget();
     noteList->setObjectName("noteList");
     noteList->setSpacing(2);
+    noteList->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     leftTileLayout->addWidget(listTitle);
     leftTileLayout->addWidget(noteList);
@@ -1044,6 +1064,53 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
             setUnsavedChanges(true);
         }
     });
+
+    // Wire trash button to show trashed notes dialog
+    connect(trashButton, &QPushButton::clicked, [this]() {
+        showTrashDialog();
+    });
+
+    connect(deleteButton, &QPushButton::clicked, [this]() {
+        // Trash selected notes from the sidebar
+        QList<QListWidgetItem*> items = noteList->selectedItems();
+        if (items.isEmpty()) {
+            QMessageBox::information(this, "Delete", "No notes selected to delete.");
+            return;
+        }
+
+        int ret = QMessageBox::question(this, "Confirm Delete", QString("Move %1 selected note(s) to Trash?").arg(items.size()));
+        if (ret != QMessageBox::Yes) {
+            return;
+        }
+
+        int moved = 0;
+        bool currentNoteWasTrashed = false;
+        for (QListWidgetItem *item : items) {
+            qint64 noteId = item->data(Qt::UserRole).toLongLong();
+            if (currentNote && currentNote->noteId() == noteId) {
+                currentNoteWasTrashed = true;
+            }
+            if (noteRepository && noteRepository->trashNote(noteId)) {
+                ++moved;
+            }
+        }
+
+        QMessageBox::information(this, "Delete", QString("Moved %1 notes to Trash.").arg(moved));
+        // Refresh list
+        loadNotesPage(0);
+        // If currentNote was moved, clear editor
+        if (currentNoteWasTrashed) {
+            delete currentNote;
+            currentNote = nullptr;
+            writeEditor->clear();
+            titleBar->clear();
+            updateMetadataDisplay();
+        }
+    });
+
+    connect(settingsButton, &QPushButton::clicked, [this]() {
+        showSettingsDialog();
+    });
     
     // Phase 6: Initialize pagination state and connect lazy-load
     notesPageSize = 50; // reasonable default page size
@@ -1055,6 +1122,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Phase 5: Load initial page of saved notes from database on startup
     loadNotesPage(0);
+    // Phase 8: Load retention settings and purge behavior
+    QSettings s;
+    retentionDays = s.value("retentionDays", 14).toInt();
+    autoPurgeEnabled = s.value("autoPurgeEnabled", true).toBool();
+
+    if (autoPurgeEnabled && noteRepository) {
+        noteRepository->purgeTrashedNotes(retentionDays);
+    }
+
+    // Schedule periodic purge (24 hours) only if auto purge enabled
+    purgeTimer = new QTimer(this);
+    purgeTimer->setInterval(24 * 60 * 60 * 1000); // 24 hours
+    connect(purgeTimer, &QTimer::timeout, [this]() {
+        if (autoPurgeEnabled && noteRepository) {
+            noteRepository->purgeTrashedNotes(retentionDays);
+        }
+    });
+    if (autoPurgeEnabled) purgeTimer->start();
     
     applyCustomStyles();
     setNoteType("markdown"); // Set default note type to trigger initial UI state
@@ -1324,4 +1409,56 @@ void MainWindow::onRevertToSnapshot(qint64 snapshotId) {
     delete targetSnapshot;
 
     QMessageBox::information(this, "Snapshot Restored", "Note reverted to selected snapshot. Review and save to confirm.");
+}
+
+void MainWindow::showTrashDialog() {
+    if (!noteRepository) {
+        QMessageBox::warning(this, "Trash", "Repository not available.");
+        return;
+    }
+
+    TrashDialog dlg(noteRepository, retentionDays, this);
+    connect(&dlg, &TrashDialog::changesApplied, this, [this]() {
+        // Refresh sidebar and current note state after actions
+        loadNotesPage(0);
+        if (currentNote && currentNote->noteId() > 0) {
+            // If current note was restored/purged, reload
+            Note *reloaded = noteRepository->getById(currentNote->noteId());
+            if (!reloaded) {
+                // Note may have been purged; clear editor
+                currentNote = nullptr;
+                writeEditor->clear();
+                titleBar->clear();
+                updateMetadataDisplay();
+            } else {
+                delete reloaded; // keep current in-memory until user reloads
+            }
+        }
+    });
+
+    dlg.exec();
+}
+
+void MainWindow::showSettingsDialog() {
+    SettingsDialog dlg(retentionDays, autoPurgeEnabled, autoSaveDebounceMs, this);
+    if (dlg.exec() == QDialog::Accepted) {
+        retentionDays = dlg.retentionDays();
+        autoPurgeEnabled = dlg.autoPurgeEnabled();
+        autoSaveDebounceMs = dlg.autoSaveDebounceMs();
+        
+        QSettings s;
+        s.setValue("retentionDays", retentionDays);
+        s.setValue("autoPurgeEnabled", autoPurgeEnabled);
+        s.setValue("autoSaveDebounceMs", autoSaveDebounceMs);
+
+        // Apply auto-save debounce change instantly
+        autoSaveTimer->setInterval(autoSaveDebounceMs);
+
+        if (autoPurgeEnabled) {
+            if (!purgeTimer->isActive()) purgeTimer->start();
+            if (noteRepository) noteRepository->purgeTrashedNotes(retentionDays);
+        } else {
+            if (purgeTimer->isActive()) purgeTimer->stop();
+        }
+    }
 }
