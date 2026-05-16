@@ -63,6 +63,7 @@ private:
     // --- Left Sidebar (Saved Notes) ---
     QLabel *listTitle;
     QListWidget *noteList;
+    QLabel *systemInfoLabel;
     // Pagination state for large note collections (Phase 6)
     int notesPageSize;
     int notesCurrentOffset;
@@ -76,6 +77,7 @@ private:
         // Current note and type state (Phase 1)
         Note *currentNote;
         QString currentTypeId;
+        QString databasePath;
         bool isLoadingDocument;
         bool hasUnsavedChanges;
         QString currentSearchQuery;
@@ -87,8 +89,12 @@ private:
     QPushButton *btnRead;
     QPushButton *btnSplit;
 
+
     // The Stack that swaps between views
     QStackedWidget *viewStack;
+
+    // Audit Log Panel (read-only)
+    class AuditLogPanel *auditLogPanel;
 
     // PAGE 0: Write Mode
     QTextEdit *writeEditor;
@@ -117,6 +123,7 @@ private:
     void navigateSearchMatch(int direction);
     void applySearchHighlight();
     void updateMetadataDisplay();
+    void updateSystemInfoDisplay();
     bool promptForSessionPassword();
     bool promptForPassword(const QString &title, const QString &label, QString *password);
     QTextEdit *activeSearchEditor() const;

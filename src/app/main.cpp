@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include "ui/mainwindow.h"
+#include "logging/AuditLogger.h"
 
 #include <iostream>
 #include <vector>
@@ -13,7 +14,8 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setOrganizationDomain("astranotes.local");
     QCoreApplication::setApplicationName("AstraNotes");
 
-    qInstallMessageHandler(nullptr);
+    // Install audit logger to capture qDebug/qWarning etc into an immutable log
+    AuditLogger::install();
 
     qDebug() << "[main] QApplication created";
     qDebug() << "[main] Creating MainWindow...";

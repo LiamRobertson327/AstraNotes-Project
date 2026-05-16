@@ -50,6 +50,12 @@ jobs:
                 -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" ..
           cmake --build . --config Release
 
+      - name: Run Smoke Tests
+        shell: pwsh
+        run: |
+          cd build
+          ctest -C Release --output-on-failure
+
       - name: Package with Windeployqt
         shell: pwsh
         run: |

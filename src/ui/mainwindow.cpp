@@ -25,11 +25,15 @@
 #include <QInputDialog>
 #include <QTextCursor>
 #include <QTextDocument>
+#include <QSignalBlocker>
 #include <QRegularExpression>
 #include <QColor>
 #include <QShortcut>
 #include <QScrollBar>
+#include <QFileInfo>
 #include "../plugins/IFormattingAction.h"
+#include "AuditLogPanel.h"
+#include "../logging/AuditLogger.h"
 
 QTextEdit *MainWindow::activeSearchEditor() const {
     if (!viewStack) {
@@ -134,6 +138,38 @@ void MainWindow::updateMetadataDisplay() {
     const QString formatId = currentNote->typeId().isEmpty() ? "unknown" : currentNote->typeId();
 
     metadataLabel->setText(QString("Created: %1 | Modified: %2 | Format: %3").arg(created, modified, formatId));
+}
+
+void MainWindow::updateSystemInfoDisplay() {
+    if (!systemInfoLabel) {
+        return;
+    }
+
+    const int totalNotes = noteRepository ? noteRepository->countActiveNotes() : 0;
+    QStringList lines;
+    lines << QString("Notes: %1").arg(totalNotes);
+
+    QStringList typeLines;
+    const QStringList formats = PluginManager::instance().availableFormats();
+    for (const QString &typeId : formats) {
+        const IPlugin *plugin = PluginManager::instance().getPlugin(typeId);
+        const QString displayName = plugin ? plugin->displayName() : typeId;
+        const int count = noteRepository ? noteRepository->countActiveNotesByType(typeId) : 0;
+        typeLines << QString("%1: %2").arg(displayName, QString::number(count));
+    }
+    if (!typeLines.isEmpty()) {
+        lines << typeLines;
+    }
+
+    qint64 dbSizeBytes = 0;
+    if (!databasePath.isEmpty()) {
+        dbSizeBytes = QFileInfo(databasePath).size();
+    }
+
+    const double sizeMb = static_cast<double>(dbSizeBytes) / (1024.0 * 1024.0);
+    lines << QString("Database: %1").arg(dbSizeBytes > 0 ? QString::number(sizeMb, 'f', 2) + " MB" : "0 MB");
+
+    systemInfoLabel->setText(lines.join("\n"));
 }
 
 bool MainWindow::promptForPassword(const QString &title, const QString &label, QString *password) {
@@ -365,6 +401,7 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
         }
 
         updateMetadataDisplay();
+        updateSystemInfoDisplay();
         updateSearchState(searchBar ? searchBar->text() : QString());
 
         QTimer::singleShot(2000, [this](){
@@ -686,13 +723,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     autoSaveTimer->setSingleShot(true);
 
     // Phase 5: Bind crtl + f to search
-    new QShortcut(Qt::CTRL + Qt::Key_F, this, [this](){
+    new QShortcut(QKeySequence(QStringLiteral("Ctrl+F")), this, [this](){
     searchBar->setFocus();
     searchBar->selectAll();  // Convenience: pre-select text so user can immediately type
     });
 
     // Phase 5: Bind ctrl + s to manual save
-    new QShortcut(Qt::CTRL + Qt::Key_S, this, [this](){
+    new QShortcut(QKeySequence(QStringLiteral("Ctrl+S")), this, [this](){
         saveCurrentNote();
     });
     
@@ -705,6 +742,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // Store database file in the same directory as the executable
     QString appDir = QApplication::applicationDirPath();
     QString dbPath = appDir + "/notes.db";
+    databasePath = dbPath;
     
     qDebug() << "[MainWindow] Database path:" << dbPath;
     
@@ -802,27 +840,52 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     leftTileLayout->addWidget(listTitle);
     leftTileLayout->addWidget(noteList);
 
+    QFrame *systemInfoBox = new QFrame();
+    systemInfoBox->setObjectName("systemInfoBox");
+    QVBoxLayout *systemInfoLayout = new QVBoxLayout(systemInfoBox);
+    systemInfoLayout->setContentsMargins(10, 10, 10, 10);
+    systemInfoLayout->setSpacing(6);
+
+    QLabel *systemInfoTitle = new QLabel("System Info");
+    systemInfoTitle->setObjectName("listTitle");
+    systemInfoLayout->addWidget(systemInfoTitle);
+
+    systemInfoLabel = new QLabel("Loading system info...");
+    systemInfoLabel->setObjectName("systemInfoLabel");
+    systemInfoLabel->setWordWrap(true);
+    systemInfoLayout->addWidget(systemInfoLabel);
+
+    systemInfoBox->setMaximumHeight(150);
+    leftTileLayout->addSpacing(10);
+    leftTileLayout->addWidget(systemInfoBox);
+
     // 4. RIGHT TILE (Editor Area)
     QFrame *rightTile = new QFrame();
     rightTile->setObjectName("rightTile");
     QVBoxLayout *rightTileLayout = new QVBoxLayout(rightTile);
-    rightTileLayout->setContentsMargins(0, 0, 0, 0);
-    rightTileLayout->setSpacing(0);
+    rightTileLayout->setContentsMargins(10, 10, 10, 10);
+    rightTileLayout->setSpacing(12);
+
+    QFrame *editorBox = new QFrame();
+    editorBox->setObjectName("editorBox");
+    QVBoxLayout *editorBoxLayout = new QVBoxLayout(editorBox);
+    editorBoxLayout->setContentsMargins(0, 0, 0, 0);
+    editorBoxLayout->setSpacing(0);
 
     titleBar = new QLineEdit();
     titleBar->setObjectName("titleBar");
     titleBar->setPlaceholderText("Enter Note Title...");
     titleBar->setFixedHeight(60);
-    rightTileLayout->addWidget(titleBar);
+    editorBoxLayout->addWidget(titleBar);
 
     metadataLabel = new QLabel("No note selected");
     metadataLabel->setObjectName("metadataLabel");
     metadataLabel->setWordWrap(true);
-    rightTileLayout->addWidget(metadataLabel);
+    editorBoxLayout->addWidget(metadataLabel);
     
     // Phase 3: Add formatting toolbar (initially empty, will populate when note is loaded)
     formattingToolbar = new QToolBar("Formatting");
-    rightTileLayout->addWidget(formattingToolbar);
+    editorBoxLayout->addWidget(formattingToolbar);
 
     // Mode Buttons
     btnWrite = new QPushButton("Write");
@@ -863,7 +926,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     modeContainer->setLayout(modeLayout);
 
     // 5. Add the container to the Right Title
-    rightTileLayout->addWidget(modeContainer);
+    editorBoxLayout->addWidget(modeContainer);
 
    
     // The Stack
@@ -899,7 +962,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     splitLayout->addWidget(splitPreview);
     
     viewStack->addWidget(splitWidget);
-    rightTileLayout->addWidget(viewStack);
+    auditLogPanel = new AuditLogPanel();
+    editorBoxLayout->addWidget(viewStack);
+    rightTileLayout->addWidget(editorBox, 3);
+
+    QFrame *auditBox = new QFrame();
+    auditBox->setObjectName("auditBox");
+    QVBoxLayout *auditBoxLayout = new QVBoxLayout(auditBox);
+    auditBoxLayout->setContentsMargins(10, 10, 10, 10);
+    auditBoxLayout->setSpacing(8);
+
+    QLabel *auditLogTitle = new QLabel("Audit Log");
+    auditLogTitle->setObjectName("listTitle");
+    auditBoxLayout->addWidget(auditLogTitle);
+
+    auditLogPanel->setMinimumHeight(120);
+    auditLogPanel->setMaximumHeight(180);
+    auditBoxLayout->addWidget(auditLogPanel);
+    rightTileLayout->addWidget(auditBox, 1);
 
     // 5. ASSEMBLE CONTENT
     // Now that leftTile and rightTile are defined, we add them to contentLayout
@@ -1106,6 +1186,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
             titleBar->clear();
             updateMetadataDisplay();
         }
+        updateSystemInfoDisplay();
     });
 
     connect(settingsButton, &QPushButton::clicked, [this]() {
@@ -1122,6 +1203,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Phase 5: Load initial page of saved notes from database on startup
     loadNotesPage(0);
+    updateSystemInfoDisplay();
     // Phase 8: Load retention settings and purge behavior
     QSettings s;
     retentionDays = s.value("retentionDays", 14).toInt();
@@ -1141,6 +1223,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     });
     if (autoPurgeEnabled) purgeTimer->start();
     
+    // Load existing audit log into panel and subscribe to live appends
+    AuditLogger *logger = AuditLogger::instance();
+    if (logger && auditLogPanel) {
+        auditLogPanel->loadFromFile(logger->logFilePath());
+        connect(logger, &AuditLogger::logAppended, auditLogPanel, &AuditLogPanel::onNewLogAppended);
+    }
+
     applyCustomStyles();
     setNoteType("markdown"); // Set default note type to trigger initial UI state
 }
@@ -1187,12 +1276,15 @@ void MainWindow::applyCustomStyles() {
 
         /* 5. Left Sidebar (Saved Notes) */
         "QFrame#leftTile { background-color: #E1BEE7; border-radius: 12px; border: 1px solid #CE93D8; }"
+        "QFrame#systemInfoBox { background-color: rgba(255,255,255,0.55); border-radius: 10px; border: 1px solid #CE93D8; }"
         "QListWidget { background: transparent; border: none; color: #4A148C; font-size: 11pt; outline: none; }"
         "QListWidget::item { padding: 12px; border-bottom: 1px solid rgba(156, 39, 176, 0.1); color: #4A148C; }"
         "QListWidget::item:selected { background-color: rgba(156, 39, 176, 0.2); color: #4A148C; border-radius: 8px; font-weight: bold; }"
+        "QLabel#systemInfoLabel { color: #4A148C; font-size: 10pt; }"
 
         /* 6. Right Editor Tile */
         "QFrame#rightTile { background-color: white; border-radius: 12px; border: 1px solid #CE93D8; }"
+        "QFrame#editorBox, QFrame#auditBox { background-color: #FFFFFF; border-radius: 12px; border: 1px solid #CE93D8; }"
         
         "QLineEdit#titleBar { "
         "   background-color: rgba(225, 190, 231, 0.4); border: none; "
@@ -1222,6 +1314,10 @@ void MainWindow::applyCustomStyles() {
         "QTextEdit, QTextBrowser { "
         "   background-color: white; border: none; font-size: 13pt; "
         "   padding: 15px; color: #212121; "
+        "}"
+
+        "QTableWidget { "
+        "   border: none; background: transparent; font-size: 10pt; "
         "}"
     );
 }
@@ -1421,6 +1517,7 @@ void MainWindow::showTrashDialog() {
     connect(&dlg, &TrashDialog::changesApplied, this, [this]() {
         // Refresh sidebar and current note state after actions
         loadNotesPage(0);
+        updateSystemInfoDisplay();
         if (currentNote && currentNote->noteId() > 0) {
             // If current note was restored/purged, reload
             Note *reloaded = noteRepository->getById(currentNote->noteId());

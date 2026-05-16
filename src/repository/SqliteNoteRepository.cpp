@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QVariant>
 #include <QMessageBox>
+#include <QTimeZone>
 
 namespace {
 QDateTime toUtcDateTime(const QVariant &value) {
@@ -17,7 +18,7 @@ QDateTime toUtcDateTime(const QVariant &value) {
     if (!dateTime.isValid()) {
         return dateTime;
     }
-    return QDateTime(dateTime.date(), dateTime.time(), Qt::UTC);
+    return QDateTime(dateTime.date(), dateTime.time(), QTimeZone::utc());
 }
 
 bool ensureColumnExists(QSqlDatabase &db, const QString &tableName, const QString &columnName, const QString &columnDefinition) {
@@ -727,6 +728,35 @@ int SqliteNoteRepository::countTitleMatches(const QString &query) {
         qWarning() << "[SqliteNoteRepository::countTitleMatches] Failed to count title matches:" << q.lastError().text();
         return 0;
     }
+    if (q.next()) {
+        return q.value("cnt").toInt();
+    }
+    return 0;
+}
+
+int SqliteNoteRepository::countActiveNotes() const {
+    QSqlQuery q(db);
+    if (!q.exec("SELECT COUNT(*) AS cnt FROM notes WHERE is_trashed = 0")) {
+        qWarning() << "[SqliteNoteRepository::countActiveNotes] Failed to count notes:" << q.lastError().text();
+        return 0;
+    }
+
+    if (q.next()) {
+        return q.value("cnt").toInt();
+    }
+    return 0;
+}
+
+int SqliteNoteRepository::countActiveNotesByType(const QString &typeId) const {
+    QSqlQuery q(db);
+    q.prepare("SELECT COUNT(*) AS cnt FROM notes WHERE is_trashed = 0 AND typeId = :typeId");
+    q.bindValue(":typeId", typeId);
+
+    if (!q.exec()) {
+        qWarning() << "[SqliteNoteRepository::countActiveNotesByType] Failed to count notes by type:" << q.lastError().text();
+        return 0;
+    }
+
     if (q.next()) {
         return q.value("cnt").toInt();
     }

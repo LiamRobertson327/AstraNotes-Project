@@ -20,7 +20,7 @@
 | Phase 5 | UI Search, Shutdown, and Recovery | [x] | Completed and integrated |
 | Phase 6 | Global Search, Metadata, and Version History | [x] | Completed and integrated |
 | Phase 7 | Security, Encryption, and Auditability | [x] | Completed and integrated |
-| Phase 8 | Trash, Retention, and Release Hardening | [~] | In progress |
+| Phase 8 | Trash, Retention, and Release Hardening | [x] | Trash/retention complete; release hardening deferred |
 | Phase 9 | Strict MVC Refactor | [ ] | Planned after Phase 8 is implemented |
 
 ---

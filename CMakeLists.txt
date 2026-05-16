@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 1. Setup the Qt Path
 set(Qt6_DIR "C:/Qt/6.11.0/mingw_64/lib/cmake/Qt6")
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Sql)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Sql Test)
 
 # 2. Find OpenSSL
 if(NOT DEFINED ENV{GITHUB_ACTIONS})
@@ -20,10 +20,31 @@ find_package(OpenSSL REQUIRED)
 # 2. Modern Qt Setup
 qt_standard_project_setup()
 
-# 3. Gather sources and create the executable
-file(GLOB_RECURSE ASTRA_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_SOURCE_DIR}/src/*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/*.c"
+# 3. Split shared core code from app UI code
+file(GLOB_RECURSE ASTRA_CORE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/model/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/repository/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/service/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/plugins/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/logging/*.cpp"
+)
+
+file(GLOB_RECURSE ASTRA_APP_UI_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/ui/*.cpp"
+)
+
+# Build core library from shared sources so tests can link against implementation symbols.
+add_library(AstraCore STATIC ${ASTRA_CORE_SOURCES})
+target_include_directories(AstraCore PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${OPENSSL_INCLUDE_DIR}
+)
+target_link_libraries(AstraCore PRIVATE
+    OpenSSL::Crypto
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Widgets
+    Qt6::Gui
 )
 
 # Check if we are running in GitHub Actions (where we use MSVC which handles spaces fine)
@@ -36,7 +57,8 @@ endif()
 
 qt_add_executable(AstraNotes
     WIN32 MACOSX_BUNDLE
-    ${ASTRA_SOURCES}
+    src/app/main.cpp
+    ${ASTRA_APP_UI_SOURCES}
     src/ui/mainwindow.h
     src/ui/mainwindow.ui
     ${RESOURCE_FILES}
@@ -54,6 +76,7 @@ target_link_libraries(AstraNotes PRIVATE
     Qt6::Widgets
     Qt6::Core
     Qt6::Sql
+    AstraCore
     OpenSSL::Crypto
 )
 
@@ -65,6 +88,11 @@ qt_generate_deploy_app_script(
 )
 
 install(SCRIPT ${deploy_script})
+
+enable_testing()
+
+# Include project tests (smoke / unit tests)
+add_subdirectory(tests)
 
 # --- OpenSSL Module Deployment Fix ---
 # This detects your MSYS2 OpenSSL modules and copies them to your build directory 

@@ -35,6 +35,8 @@ public:
     // Paged search API for large collections (Phase 6)
     QVector<Note*> searchByTitlePaged(const QString &query, int limit, int offset);
     int countTitleMatches(const QString &query);
+    int countActiveNotes() const;
+    int countActiveNotesByType(const QString &typeId) const;
     // Snapshot methods (Phase 6: FR8)
     bool saveSnapshot(Snapshot &snapshot);
     bool saveSnapshot(Snapshot &snapshot, const QString &password);
