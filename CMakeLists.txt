@@ -25,6 +25,7 @@ file(GLOB_RECURSE ASTRA_CORE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/model/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/repository/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/service/*.cpp"
+    "${CMAKE_SOURCE_DIR}/src/crypto/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/plugins/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/logging/*.cpp"
 )

@@ -1,7 +1,7 @@
 #include "NoteService.h"
 
-#include "../model/Note.h"
-#include "../repository/SqliteNoteRepository.h"
+#include "../../model/Note.h"
+#include "../../repository/SqliteNoteRepository.h"
 
 #include <QDebug>
 #include <QVector>
@@ -10,18 +10,10 @@ NoteService::NoteService(SqliteNoteRepository *repository)
     : m_repository(repository) {}
 
 Note *NoteService::loadNote(qint64 noteId, const QString &password, bool *wrongPassword, QString *errorMessage) {
-    if (!m_repository) {
-        if (errorMessage) {
-            *errorMessage = "Note repository is unavailable";
-        }
-        return nullptr;
-    }
-
-    if (password.isEmpty()) {
-        return m_repository->getById(noteId);
-    }
-
-    return m_repository->getById(noteId, password, wrongPassword);
+    // Forward to the robust loader to centralize password-detection
+    // and error reporting behavior.
+    bool needsPassword = false;
+    return loadNoteRobust(noteId, password, &needsPassword, wrongPassword, errorMessage);
 }
 
 bool NoteService::saveNote(Note &note, const QString &password, QString *errorMessage) {

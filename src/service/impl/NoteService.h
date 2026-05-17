@@ -1,7 +1,7 @@
 #ifndef NOTESERVICE_H
 #define NOTESERVICE_H
 
-#include "INoteService.h"
+#include "../interfaces/INoteService.h"
 #include <QString>
 
 class Note;

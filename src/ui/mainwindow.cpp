@@ -2,6 +2,7 @@
 
 #include "TrashDialog.h"
 #include "SettingsDialog.h"
+#include "NoteListController.h"
 #include <QSettings>
 
 #include "../plugins/PluginManager.h"
@@ -9,7 +10,9 @@
 #include "../plugins/MarkdownPlugin.h"
 #include "../model/Note.h"
 #include "../model/Snapshot.h"
-#include "../service/NoteService.h"
+#include "../service/impl/NoteService.h"
+#include "../service/impl/SnapshotService.h"
+#include "../service/impl/TrashService.h"
 #include "../repository/SqliteNoteRepository.h"
 #include <QTimer>
 #include <QDebug>
@@ -62,6 +65,54 @@ void MainWindow::setUnsavedChanges(bool dirty) {
         saveIndicator->setText("● Unsaved");
         saveIndicator->setStyleSheet("color: #E91E63;");
     }
+}
+
+void MainWindow::resetEditorToBlankState() {
+    if (autoSaveTimer) {
+        autoSaveTimer->stop();
+    }
+
+    if (currentNote) {
+        delete currentNote;
+        currentNote = nullptr;
+    }
+
+    sessionPassword.clear();
+    currentTypeId = "markdown";
+    isLoadingDocument = true;
+
+    if (titleBar) {
+        titleBar->clear();
+        titleBar->setPlaceholderText("Enter Note Title...");
+    }
+    if (writeEditor) {
+        writeEditor->clear();
+    }
+    if (readViewer) {
+        readViewer->clear();
+    }
+    if (splitEditor) {
+        splitEditor->clear();
+    }
+    if (splitPreview) {
+        splitPreview->clear();
+    }
+    if (secureToggle) {
+        secureToggle->blockSignals(true);
+        secureToggle->setChecked(false);
+        secureToggle->blockSignals(false);
+    }
+
+    setNoteType("markdown");
+    if (saveIndicator) {
+        saveIndicator->setText("● New Note");
+        saveIndicator->setStyleSheet("color: #2196F3;");
+    }
+
+    setUnsavedChanges(false);
+    updateMetadataDisplay();
+    updateSearchState(searchBar ? searchBar->text() : QString());
+    isLoadingDocument = false;
 }
 
 void MainWindow::applySearchHighlight() {
@@ -145,7 +196,7 @@ void MainWindow::updateSystemInfoDisplay() {
         return;
     }
 
-    const int totalNotes = noteRepository ? noteRepository->countActiveNotes() : 0;
+    const int totalNotes = noteService ? noteService->countActiveNotes() : 0;
     QStringList lines;
     lines << QString("Notes: %1").arg(totalNotes);
 
@@ -154,7 +205,7 @@ void MainWindow::updateSystemInfoDisplay() {
     for (const QString &typeId : formats) {
         const IPlugin *plugin = PluginManager::instance().getPlugin(typeId);
         const QString displayName = plugin ? plugin->displayName() : typeId;
-        const int count = noteRepository ? noteRepository->countActiveNotesByType(typeId) : 0;
+        const int count = noteService ? noteService->countActiveNotesByType(typeId) : 0;
         typeLines << QString("%1: %2").arg(displayName, QString::number(count));
     }
     if (!typeLines.isEmpty()) {
@@ -377,27 +428,17 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
     }
 
     QString saveError;
-    if (noteService && noteService->saveNote(*currentNote, currentNote->isSecured() ? sessionPassword : QString(), createSnapshot, &saveError)) {
+    if (noteService && noteService->saveNote(*currentNote, currentNote->isSecured() ? sessionPassword : QString(), &saveError)) {
         setUnsavedChanges(false);
         saveIndicator->setText("● Saved");
         saveIndicator->setStyleSheet("color: #4CAF50;");
 
-        if (currentNote->noteId() > 0) {
-            bool noteExists = false;
-            for (int i = 0; i < noteList->count(); ++i) {
-                QListWidgetItem *item = noteList->item(i);
-                if (item->data(Qt::UserRole).toLongLong() == currentNote->noteId()) {
-                    noteExists = true;
-                    item->setText(currentNote->displayText());
-                    break;
-                }
-            }
+        if (noteListController) {
+            noteListController->noteSaved(currentNote);
+        }
 
-            if (!noteExists) {
-                QListWidgetItem *newItem = new QListWidgetItem(currentNote->displayText(), nullptr);
-                newItem->setData(Qt::UserRole, currentNote->noteId());
-                noteList->insertItem(0, newItem);
-            }
+        if (createSnapshot) {
+            createSnapshotForCurrentNote();
         }
 
         updateMetadataDisplay();
@@ -533,50 +574,8 @@ void MainWindow::populateFormattingToolbar(const QString &typeId) {
 }
 
 void MainWindow::loadNotesFromDatabase() {
-    // Deprecated: use paged loader `loadNotesPage(int)` to populate the sidebar.
-    loadNotesPage(0);
-}
-
-void MainWindow::loadNotesPage(int offset) {
-    if (!noteRepository || !noteList) {
-        return;
-    }
-
-    if (offset == 0) {
-        noteList->clear();
-        notesCurrentOffset = 0;
-        notesAllLoaded = false;
-    }
-
-    if (notesAllLoaded) {
-        return;
-    }
-
-    QVector<Note*> page = noteRepository->searchByTitlePaged(QString(), notesPageSize, offset);
-    qDebug() << "[MainWindow::loadNotesPage] Loaded" << page.size() << "notes for offset" << offset;
-
-    for (Note *note : page) {
-        if (!note) continue;
-        QListWidgetItem *item = new QListWidgetItem(note->displayText(), noteList);
-        item->setData(Qt::UserRole, note->noteId());
-        delete note;
-    }
-
-    if (page.size() < notesPageSize) {
-        notesAllLoaded = true;
-    } else {
-        notesCurrentOffset += page.size();
-    }
-}
-
-void MainWindow::onNoteListScrolled() {
-    if (!noteList || !noteList->verticalScrollBar()) return;
-    QScrollBar *sb = noteList->verticalScrollBar();
-    int val = sb->value();
-    int max = sb->maximum();
-    // When within 120px of bottom, load next page
-    if (val >= max - 120 && !notesAllLoaded) {
-        loadNotesPage(notesCurrentOffset);
+    if (noteListController) {
+        noteListController->reload();
     }
 }
 
@@ -588,23 +587,24 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
     
     qDebug() << "[MainWindow::loadNoteIntoEditor] Loading note with ID:" << noteId;
     
-    // Retrieve the note from the service so the workflow stays outside the UI layer
-    Note *note = noteService ? noteService->loadNote(noteId) : nullptr;
+    // Use NoteService::loadNoteRobust to detect secured notes and centralize loading.
+    bool needsPassword = false;
+    bool wrongPassword = false;
+    QString loadError;
+    Note *note = noteService ? noteService->loadNoteRobust(noteId, QString(), &needsPassword, &wrongPassword, &loadError) : nullptr;
     if (!note) {
-        qWarning() << "[MainWindow::loadNoteIntoEditor] Failed to load note with ID:" << noteId;
+        qWarning() << "[MainWindow::loadNoteIntoEditor] Failed to load note with ID:" << noteId << loadError;
         return;
     }
 
-    if (note->isSecured()) {
+    if (needsPassword) {
         QString enteredPassword;
         if (!promptForPassword("Decrypt Note", QString("Enter the password for '%1':").arg(note->title()), &enteredPassword)) {
             delete note;
             return;
         }
 
-        bool wrongPassword = false;
-        QString loadError;
-        Note *decryptedNote = noteService ? noteService->loadNote(noteId, enteredPassword, &wrongPassword, &loadError) : nullptr;
+        Note *decryptedNote = noteService ? noteService->loadNoteRobust(noteId, enteredPassword, nullptr, &wrongPassword, &loadError) : nullptr;
         delete note;
         if (!decryptedNote) {
             if (wrongPassword) {
@@ -671,8 +671,12 @@ void MainWindow::createNewNote(const QString &typeId) {
         delete currentNote;
     }
     
-    // Create a new note with the selected type
-    currentNote = new Note(typeId, "");
+    // Create a new note with the selected type via NoteService
+    if (noteService) {
+        currentNote = noteService->createNote(typeId, "");
+    } else {
+        currentNote = new Note(typeId, "");
+    }
     sessionPassword.clear();
     isLoadingDocument = true;
     
@@ -709,6 +713,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         // Initialize Phase 1 members
         currentNote = nullptr;
     noteService = nullptr;
+    noteListController = nullptr;
         currentTypeId = "plaintext";
     isLoadingDocument = false;
     hasUnsavedChanges = false;
@@ -747,12 +752,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     qDebug() << "[MainWindow] Database path:" << dbPath;
     
         noteRepository = new SqliteNoteRepository(dbPath);
-        if (!noteRepository->isConnected()) {
+        // Create service layer immediately so UI uses services instead of repository
+        noteService = new NoteService(noteRepository);
+        snapshotService = new SnapshotService(noteRepository);
+        trashService = new TrashService(noteRepository);
+
+        if (!noteService->isConnected()) {
             qWarning() << "[MainWindow] Database connection failed!";
         } else {
             qDebug() << "[MainWindow] Database connected successfully";
         }
-        noteService = new NoteService(noteRepository);
 
     // 1. Initialize Central Widget
     centralWidget = new QWidget(this);
@@ -1117,9 +1126,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // Phase 5 (FR1): Wire auto-save timer to slot
     connect(autoSaveTimer, &QTimer::timeout, this, &MainWindow::handleAutoSaveTimeout);
     
-    // Phase 5: Wire note list item click to load note into editor
-    connect(noteList, &QListWidget::itemClicked, [this](QListWidgetItem *item){
-        qint64 noteId = item->data(Qt::UserRole).toLongLong();
+    noteListController = new NoteListController(noteList, noteService, this);
+    connect(noteListController, &NoteListController::noteSelected, [this](qint64 noteId){
         qDebug() << "[MainWindow] Loading note with ID:" << noteId;
         if (!confirmUnsavedChanges("opening another note")) {
             return;
@@ -1151,7 +1159,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     });
 
     connect(deleteButton, &QPushButton::clicked, [this]() {
-        // Trash selected notes from the sidebar
         QList<QListWidgetItem*> items = noteList->selectedItems();
         if (items.isEmpty()) {
             QMessageBox::information(this, "Delete", "No notes selected to delete.");
@@ -1163,62 +1170,51 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
             return;
         }
 
-        int moved = 0;
-        bool currentNoteWasTrashed = false;
-        for (QListWidgetItem *item : items) {
-            qint64 noteId = item->data(Qt::UserRole).toLongLong();
-            if (currentNote && currentNote->noteId() == noteId) {
-                currentNoteWasTrashed = true;
-            }
-            if (noteRepository && noteRepository->trashNote(noteId)) {
-                ++moved;
+        if (noteListController) {
+            noteListController->trashSelectedNotes();
+        }
+
+        // Refresh UI after controller did the work
+        updateSystemInfoDisplay();
+        bool deletedCurrentNote = false;
+        if (currentNote && currentNote->noteId() > 0) {
+            for (QListWidgetItem *item : items) {
+                if (item && item->data(Qt::UserRole).toLongLong() == currentNote->noteId()) {
+                    deletedCurrentNote = true;
+                    break;
+                }
             }
         }
 
-        QMessageBox::information(this, "Delete", QString("Moved %1 notes to Trash.").arg(moved));
-        // Refresh list
-        loadNotesPage(0);
-        // If currentNote was moved, clear editor
-        if (currentNoteWasTrashed) {
-            delete currentNote;
-            currentNote = nullptr;
-            writeEditor->clear();
-            titleBar->clear();
-            updateMetadataDisplay();
+        if (deletedCurrentNote) {
+            resetEditorToBlankState();
         }
-        updateSystemInfoDisplay();
     });
 
     connect(settingsButton, &QPushButton::clicked, [this]() {
         showSettingsDialog();
     });
     
-    // Phase 6: Initialize pagination state and connect lazy-load
-    notesPageSize = 50; // reasonable default page size
-    notesCurrentOffset = 0;
-    notesAllLoaded = false;
-    if (noteList && noteList->verticalScrollBar()) {
-        connect(noteList->verticalScrollBar(), &QScrollBar::valueChanged, this, &MainWindow::onNoteListScrolled);
-    }
-
     // Phase 5: Load initial page of saved notes from database on startup
-    loadNotesPage(0);
+    if (noteListController) {
+        noteListController->reload();
+    }
     updateSystemInfoDisplay();
     // Phase 8: Load retention settings and purge behavior
     QSettings s;
     retentionDays = s.value("retentionDays", 14).toInt();
     autoPurgeEnabled = s.value("autoPurgeEnabled", true).toBool();
 
-    if (autoPurgeEnabled && noteRepository) {
-        noteRepository->purgeTrashedNotes(retentionDays);
+    if (autoPurgeEnabled && trashService) {
+        trashService->purgeOldTrashedNotes(retentionDays);
     }
 
     // Schedule periodic purge (24 hours) only if auto purge enabled
     purgeTimer = new QTimer(this);
     purgeTimer->setInterval(24 * 60 * 60 * 1000); // 24 hours
     connect(purgeTimer, &QTimer::timeout, [this]() {
-        if (autoPurgeEnabled && noteRepository) {
-            noteRepository->purgeTrashedNotes(retentionDays);
+        if (autoPurgeEnabled && trashService) {
+            trashService->purgeOldTrashedNotes(retentionDays);
         }
     });
     if (autoPurgeEnabled) purgeTimer->start();
@@ -1237,6 +1233,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 MainWindow::~MainWindow() {
     if (noteService) {
         delete noteService;
+    }
+    if (snapshotService) {
+        delete snapshotService;
+    }
+    if (trashService) {
+        delete trashService;
     }
     if (noteRepository) {
         delete noteRepository;
@@ -1329,15 +1331,16 @@ void MainWindow::applyCustomStyles() {
 void MainWindow::createSnapshotForCurrentNote() {
     // Auto-create a snapshot when a note is saved.
     // This captures the exact state of title and content at save time.
-    if (!currentNote || !noteService) {
+    if (!currentNote || !snapshotService) {
         return;
     }
 
     qDebug() << "[MainWindow::createSnapshotForCurrentNote] Creating snapshot for note ID:" << currentNote->noteId();
 
     QString snapshotError;
-    if (noteService && noteService->saveSnapshotForNote(*currentNote, currentNote->isSecured() ? sessionPassword : QString(), &snapshotError)) {
+    if (snapshotService->saveSnapshot(*currentNote, currentNote->isSecured() ? sessionPassword : QString(), &snapshotError)) {
         qDebug() << "[MainWindow::createSnapshotForCurrentNote] Snapshot created for note ID:" << currentNote->noteId();
+        snapshotService->enforceSnapshotLimit(currentNote->noteId(), 2);
     } else {
         if (!snapshotError.isEmpty()) {
             qWarning() << "[MainWindow::createSnapshotForCurrentNote]" << snapshotError;
@@ -1349,14 +1352,14 @@ void MainWindow::createSnapshotForCurrentNote() {
 void MainWindow::showSnapshotHistoryDialog() {
     // Display a dialog with list of snapshots for current note.
     // Allow user to view snapshot details, revert to snapshot, or delete snapshot.
-    if (!currentNote || !noteRepository) {
+    if (!currentNote || !snapshotService) {
         qWarning() << "[MainWindow::showSnapshotHistoryDialog] No note loaded";
         return;
     }
 
     qDebug() << "[MainWindow::showSnapshotHistoryDialog] Showing snapshot history for note ID:" << currentNote->noteId();
 
-    QVector<Snapshot*> snapshots = noteRepository->getSnapshotsByNoteId(currentNote->noteId());
+    QVector<Snapshot*> snapshots = snapshotService ? snapshotService->getSnapshotsByNoteId(currentNote->noteId()) : QVector<Snapshot*>();
 
     if (snapshots.isEmpty()) {
         QMessageBox::information(this, "Snapshot History", "No snapshots yet for this note.");
@@ -1410,7 +1413,7 @@ void MainWindow::showSnapshotHistoryDialog() {
         dialog->close();
     });
 
-    connect(deleteButton, &QPushButton::clicked, [this, snapshotList, dialog, noteRepository = this->noteRepository]() {
+    connect(deleteButton, &QPushButton::clicked, [this, snapshotList, dialog]() {
         QListWidgetItem *item = snapshotList->currentItem();
         if (!item) {
             QMessageBox::warning(this, "Error", "Please select a snapshot to delete.");
@@ -1418,7 +1421,7 @@ void MainWindow::showSnapshotHistoryDialog() {
         }
 
         qint64 snapshotId = item->data(Qt::UserRole).toLongLong();
-        if (noteRepository->deleteSnapshotById(snapshotId)) {
+        if (snapshotService && snapshotService->deleteSnapshot(snapshotId)) {
             QMessageBox::information(this, "Success", "Snapshot deleted.");
             snapshotList->takeItem(snapshotList->row(item));
             delete item;
@@ -1440,54 +1443,42 @@ void MainWindow::showSnapshotHistoryDialog() {
 
 void MainWindow::onRevertToSnapshot(qint64 snapshotId) {
     // Revert current note to a previous snapshot.
-    // This creates a NEW snapshot of the current state (before reverting),
-    // then restores the selected snapshot's content.
-    if (!currentNote || !noteRepository) {
-        qWarning() << "[MainWindow::onRevertToSnapshot] No note loaded or repository not ready";
+    // SnapshotService handles the safety snapshot and target restore.
+    if (!currentNote || !snapshotService) {
+        qWarning() << "[MainWindow::onRevertToSnapshot] No note loaded or snapshot service not ready";
         return;
     }
 
     qDebug() << "[MainWindow::onRevertToSnapshot] Reverting to snapshot ID:" << snapshotId;
-
-    // Fetch the target snapshot directly (before creating safety snapshot)
-    Snapshot *targetSnapshot = noteRepository->getSnapshotById(snapshotId);
-
-    if (!targetSnapshot) {
-        qWarning() << "[MainWindow::onRevertToSnapshot] Snapshot not found with ID:" << snapshotId;
-        QMessageBox::warning(this, "Error", "Snapshot not found.");
-        return;
-    }
-
-    if (targetSnapshot->isSecured()) {
-        QString enteredPassword;
-        if (!promptForPassword("Decrypt Snapshot", QString("Enter the password for the selected snapshot:"), &enteredPassword)) {
-            delete targetSnapshot;
-            return;
+    QString revertError;
+    Snapshot *restored = snapshotService->revertToSnapshot(*currentNote, snapshotId, sessionPassword, &revertError);
+    if (!restored) {
+        if (revertError == "Incorrect password for snapshot") {
+            QString enteredPassword;
+            if (promptForPassword("Decrypt Snapshot", QString("Enter the password for the selected snapshot:"), &enteredPassword)) {
+                sessionPassword = enteredPassword;
+                restored = snapshotService->revertToSnapshot(*currentNote, snapshotId, sessionPassword, &revertError);
+            }
         }
 
-        bool wrongPassword = false;
-        Snapshot *decryptedSnapshot = noteRepository->getSnapshotById(snapshotId, enteredPassword, &wrongPassword);
-        delete targetSnapshot;
-        if (!decryptedSnapshot) {
-            if (wrongPassword) {
+        if (!restored) {
+            if (revertError == "Incorrect password for snapshot") {
                 QMessageBox::warning(this, "Incorrect Password", "The password you entered could not decrypt this snapshot.");
+            } else if (!revertError.isEmpty()) {
+                QMessageBox::warning(this, "Error", revertError);
+            } else {
+                QMessageBox::warning(this, "Error", "Failed to restore snapshot.");
             }
             return;
         }
-
-        sessionPassword = enteredPassword;
-        targetSnapshot = decryptedSnapshot;
     }
-
-    // Create a safety snapshot of the current state (undo point) only after we've loaded the target
-    createSnapshotForCurrentNote();
 
     // Restore the snapshot's content
     isLoadingDocument = true;
-    titleBar->setText(targetSnapshot->title());
-    writeEditor->setPlainText(targetSnapshot->content());
-    splitEditor->setPlainText(targetSnapshot->content());
-    splitPreview->setMarkdown(targetSnapshot->content());
+    titleBar->setText(restored->title());
+    writeEditor->setPlainText(restored->content());
+    splitEditor->setPlainText(restored->content());
+    splitPreview->setMarkdown(restored->content());
     if (secureToggle) {
         secureToggle->blockSignals(true);
         secureToggle->setChecked(currentNote ? currentNote->isSecured() : false);
@@ -1502,31 +1493,28 @@ void MainWindow::onRevertToSnapshot(qint64 snapshotId) {
 
     qDebug() << "[MainWindow::onRevertToSnapshot] Reverted to snapshot ID:" << snapshotId;
 
-    delete targetSnapshot;
+    delete restored;
 
     QMessageBox::information(this, "Snapshot Restored", "Note reverted to selected snapshot. Review and save to confirm.");
 }
 
 void MainWindow::showTrashDialog() {
-    if (!noteRepository) {
-        QMessageBox::warning(this, "Trash", "Repository not available.");
+    if (!trashService) {
+        QMessageBox::warning(this, "Trash", "Trash service not available.");
         return;
     }
 
-    TrashDialog dlg(noteRepository, retentionDays, this);
+    TrashDialog dlg(trashService, retentionDays, this);
     connect(&dlg, &TrashDialog::changesApplied, this, [this]() {
         // Refresh sidebar and current note state after actions
-        loadNotesPage(0);
+        if (noteListController) noteListController->reload();
         updateSystemInfoDisplay();
         if (currentNote && currentNote->noteId() > 0) {
             // If current note was restored/purged, reload
-            Note *reloaded = noteRepository->getById(currentNote->noteId());
+            Note *reloaded = noteService ? noteService->loadNote(currentNote->noteId()) : nullptr;
             if (!reloaded) {
-                // Note may have been purged; clear editor
-                currentNote = nullptr;
-                writeEditor->clear();
-                titleBar->clear();
-                updateMetadataDisplay();
+                // Note may have been purged; reset the editor to the default blank state
+                resetEditorToBlankState();
             } else {
                 delete reloaded; // keep current in-memory until user reloads
             }
@@ -1553,7 +1541,7 @@ void MainWindow::showSettingsDialog() {
 
         if (autoPurgeEnabled) {
             if (!purgeTimer->isActive()) purgeTimer->start();
-            if (noteRepository) noteRepository->purgeTrashedNotes(retentionDays);
+            if (trashService) trashService->purgeOldTrashedNotes(retentionDays);
         } else {
             if (purgeTimer->isActive()) purgeTimer->stop();
         }

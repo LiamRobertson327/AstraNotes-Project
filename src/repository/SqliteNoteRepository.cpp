@@ -1,6 +1,6 @@
 #include "SqliteNoteRepository.h"
 #include "model/Snapshot.h"
-#include "../service/EncryptionService.h"
+#include "../crypto/EncryptionService.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QSqlRecord>
@@ -693,7 +693,7 @@ QVector<Note*> SqliteNoteRepository::searchByTitlePaged(const QString &query, in
     QVector<Note*> results;
     QSqlQuery q(db);
     QString pattern = query.trimmed().isEmpty() ? "%%" : ("%" + query + "%");
-    q.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND title LIKE :query ORDER BY modified_at DESC LIMIT :limit OFFSET :offset");
+    q.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND title LIKE :query ORDER BY modified_at DESC, id DESC LIMIT :limit OFFSET :offset");
     q.addBindValue(pattern);
     q.addBindValue(limit);
     q.addBindValue(offset);
@@ -906,15 +906,13 @@ bool SqliteNoteRepository::saveSnapshot(Snapshot &snapshot, const QString &passw
     }
 
     if (ok) {
-        // Finalize the previous statement before issuing another query.
+        // Finalize the previous statement before committing.
         query.finish();
         query.clear();
 
-        if (!pruneOldSnapshots(snapshot.noteId())) {
-            db.rollback();
-            return false;
-        }
-
+        // Do NOT prune snapshots automatically here. Pruning should be an
+        // explicit operation invoked by the service layer so callers can
+        // control ordering (e.g. when creating safety snapshots before revert).
         if (!db.commit()) {
             qWarning() << "[SqliteNoteRepository::saveSnapshot] Failed to commit transaction:" << db.lastError().text();
             db.rollback();

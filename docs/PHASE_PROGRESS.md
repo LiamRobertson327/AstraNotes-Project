@@ -36,20 +36,21 @@
 - [x] Story 5: Persistent Storage of Notes
 - [x] Story 6: Encrypt Private Notes
 - [x] Story 7: Note Metadata and Versioning with Snapshots
+- [x] Story 8: Delete One or More Notes
 - [x] Story 9: Plugin Validation and Missing-Plugin Fallback
 - [x] Story 10: In-Note Search with Match Count and Navigation
 - [x] Story 11: Crash Recovery with WAL and Durable Save
 - [x] Story 12: Encryption with Argon2id Key Derivation and IV Management
+- [x] Story 13: Trash with 14-Day Retention and Automatic Purge
 - [x] Story 14: Automatic Snapshot Creation on Save
 - [x] Story 15: Graceful Shutdown with Unsaved-Edit Recovery
+- [x] Story 16: Immutable Audit Log for Note Operations
 - [x] Story 17: Database Security and SQL Injection Prevention
 - [x] Story 18: Consistent Error Handling and User Notification Contract
 
 ### In Progress / Planned Stories
 
-- [~] Story 8: Delete One or More Notes
-- [~] Story 13: Trash with 14-Day Retention and Automatic Purge
-- [ ] Story 16: Immutable Audit Log for Note Operations
+- None at the moment — no outstanding in-progress stories.
 
 ---
 

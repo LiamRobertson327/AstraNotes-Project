@@ -3,7 +3,7 @@
 #include <QFile>
 #include <QDir>
 
-#include "../src/service/EncryptionService.h"
+#include "../src/crypto/EncryptionService.h"
 #include "../src/repository/SqliteNoteRepository.h"
 #include "../src/model/Note.h"
 #include "../src/model/Snapshot.h"

@@ -32,51 +32,65 @@ AstraNotes is a plugin-based note taking application built in C++ with the Qt fr
 
 ## 🗂️ Repository Structure
 ```
-AstraNotes
-├──  src/
-│      ├── api
-│      │    ├── INote.h
-│      │    ├── IPlugin.h
-│      │    └── ISnapshot.h
-│      ├── app
-│      │    └── main.cpp
-│      ├── model
-│      │    ├── Note.cpp
-│      │    ├── Note.h
-│      │    ├── Snapshot.cpp
-│      │    └── Snapshot.h
-│      ├── plugins
-│      │    ├── IFormattingAction.h
-│      │    ├── MarkdownFormattingPlugin.h
-│      │    ├── MarkdownPlugin.cpp
-│      │    ├── MarkdownPlugin.h
-│      │    ├── PlainTextPlugin.cpp
-│      │    ├── PlaintextPlugin.h
-│      │    ├── PluginManager.cpp
-│      │    └── PluginManager.h
-│      ├── repoistory
-│      │    ├── INoteRepoistory.h
-│      │    ├── SqliteNoteRepoistroy.cpp
-│      │    └── SqliteNoteRepoistroy.h
-│      ├── service
-│      │    ├── EncryptionService.cpp
-│      │    ├── EncryptionService.h
-│      │    ├── NoteService.cpp
-│      │    └── NoteService.h
-│      ├── ui
-│      │    ├── mainwindow.cpp
-│      │    ├── mainwindow.h
-│      │    └── mainwindow.ui             
-├──  tests/
-│      ├──  mainwindow.h
-│      └──  Note.h
-│
-├──  Docs/
-│ 
-├──  .gitignore
-├──  CmakeList.txt
-├──  LICENSE
-└──  README.md
+AstraNotes-Project
+├── src/
+│   ├── api/
+│   │   ├── INote.h
+│   │   ├── IPlugin.h
+│   │   └── ISnapshot.h
+│   ├── app/
+│   │   └── main.cpp
+│   ├── model/
+│   │   ├── Note.h
+│   │   ├── Note.cpp
+│   │   ├── Snapshot.h
+│   │   └── Snapshot.cpp
+│   ├── plugins/
+│   │   ├── IFormattingAction.h
+│   │   ├── MarkdownFormattingPlugin.h
+│   │   ├── MarkdownPlugin.h
+│   │   ├── MarkdownPlugin.cpp
+│   │   ├── PlaintextPlugin.h
+│   │   ├── PlaintextPlugin.cpp
+│   │   ├── PluginManager.h
+│   │   └── PluginManager.cpp
+│   ├── repository/
+│   │   ├── INoteRepository.h
+│   │   └── SqliteNoteRepository.h/.cpp
+│   ├── service/
+│   │   ├── interfaces/
+│   │   │   ├── INoteService.h
+│   │   │   ├── ISnapshotService.h
+│   │   │   └── ITrashService.h
+│   │   └── impl/
+│   │       ├── NoteService.h/.cpp
+│   │       ├── SnapshotService.h/.cpp
+│   │       └── TrashService.h/.cpp
+│   ├── crypto/
+│   │   ├── EncryptionService.h
+│   │   └── EncryptionService.cpp
+│   ├── logging/
+│   │   ├── AuditLogger.h
+│   │   └── AuditLogger.cpp
+│   └── ui/
+│       ├── mainwindow.ui
+│       ├── mainwindow.h
+│       ├── mainwindow.cpp
+│       ├── NoteListController.h/.cpp
+│       ├── AuditLogPanel.h/.cpp
+│       └── TrashDialog.h/.cpp
+├── tests/
+│   ├── unit/
+│   │   ├── snapshot_service_tests.cpp
+│   │   └── trash_service_tests.cpp
+│   └── smoke_tests.cpp
+├── docs/
+│   ├── PHASE_PROGRESS.md
+│   └── PLUGIN_DLL_IMPLEMENTATION_PLAN.md
+├── CMakeLists.txt
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
 
 ## 🙋🏻‍♂️ How to Use

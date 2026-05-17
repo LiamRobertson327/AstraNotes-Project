@@ -1,0 +1,41 @@
+#include <QtTest>
+#include "../../src/service/impl/TrashService.h"
+#include "../../src/repository/SqliteNoteRepository.h"
+#include "../../src/model/Note.h"
+
+class TrashServiceTests : public QObject {
+    Q_OBJECT
+private slots:
+    void trashRestoreAndPurge() {
+        SqliteNoteRepository repo(":memory:");
+        QVERIFY(repo.isConnected());
+
+        Note note("text", "Trash Test");
+        QVERIFY(repo.save(note));
+        qint64 nid = note.noteId();
+        QVERIFY(nid > 0);
+
+        TrashService svc(&repo);
+
+        // Trash
+        QVERIFY(svc.trashNote(nid));
+        auto trashed = svc.getTrashedNotes();
+        QVERIFY(!trashed.isEmpty());
+
+        // Restore
+        QVERIFY(svc.restoreNote(nid));
+        auto trashed2 = svc.getTrashedNotes();
+        QCOMPARE(trashed2.size(), 0);
+
+        // Trash again and purge
+        QVERIFY(svc.trashNote(nid));
+        QVERIFY(svc.purgeNote(nid));
+        Note* after = repo.getById(nid);
+        QVERIFY(after == nullptr);
+
+        qDeleteAll(trashed);
+    }
+};
+
+QTEST_MAIN(TrashServiceTests)
+#include "trash_service_tests.moc"

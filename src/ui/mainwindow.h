@@ -25,6 +25,10 @@ class QKeyEvent;
 
 class Note;  // Forward declaration for Phase 1
 class NoteService;
+class SnapshotService;
+class TrashService; // service layer
+class TrashDialog;  // UI dialog
+class NoteListController;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -39,6 +43,9 @@ private:
         // Repository for persistence (Phase 4)
         SqliteNoteRepository *noteRepository;
         NoteService *noteService;
+        SnapshotService *snapshotService;
+        TrashService *trashService;
+        NoteListController *noteListController;
     QLineEdit *searchBar;
     QPushButton *searchPrevButton;
     QPushButton *searchNextButton;
@@ -64,10 +71,6 @@ private:
     QLabel *listTitle;
     QListWidget *noteList;
     QLabel *systemInfoLabel;
-    // Pagination state for large note collections (Phase 6)
-    int notesPageSize;
-    int notesCurrentOffset;
-    bool notesAllLoaded;
 
     // --- Right Editor Area ---
     QLineEdit *titleBar;
@@ -113,8 +116,6 @@ private:
     void setNoteType(const QString &typeId);  // Phase 1: Update UI based on note type
     void populateFormattingToolbar(const QString &typeId);  // Phase 3: Populate toolbar from plugin
     void loadNotesFromDatabase();  // Phase 5: Load all saved notes on startup
-    void loadNotesPage(int offset); // Phase 6: Load a page of notes into the sidebar
-    void onNoteListScrolled();      // Phase 6: Handle scrollbar events for lazy-load
     void loadNoteIntoEditor(qint64 noteId);  // Phase 5: Load a specific note into the editor
     void createNewNote(const QString &typeId);  // Create a new note of specified type
     void updateSearchState(const QString &query);
@@ -128,6 +129,7 @@ private:
     bool promptForPassword(const QString &title, const QString &label, QString *password);
     QTextEdit *activeSearchEditor() const;
     void setUnsavedChanges(bool dirty);
+    void resetEditorToBlankState();
     bool saveCurrentNote(bool createSnapshot = true);
     bool confirmUnsavedChanges(const QString &actionText);
     void createSnapshotForCurrentNote();  // Phase 6: FR8 - Auto-create snapshot on save

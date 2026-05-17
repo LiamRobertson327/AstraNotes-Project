@@ -1,11 +1,11 @@
 #include "TrashDialog.h"
-#include "../repository/SqliteNoteRepository.h"
+#include "../service/interfaces/ITrashService.h"
 #include "../model/Note.h"
 #include <QDateTime>
 #include <QMessageBox>
 
-TrashDialog::TrashDialog(SqliteNoteRepository *repo, int retentionDays_, QWidget *parent)
-    : QDialog(parent), noteRepository(repo), retentionDays(retentionDays_) {
+TrashDialog::TrashDialog(ITrashService *trashService, int retentionDays_, QWidget *parent)
+    : QDialog(parent), trashService(trashService), retentionDays(retentionDays_) {
     setWindowTitle("Trashed Notes");
     setMinimumSize(600, 400);
 
@@ -38,7 +38,7 @@ TrashDialog::TrashDialog(SqliteNoteRepository *repo, int retentionDays_, QWidget
 
 void TrashDialog::populateList() {
     listWidget->clear();
-    QVector<Note*> trashed = noteRepository->getTrashedNotes();
+    QVector<Note*> trashed = trashService->getTrashedNotes();
 
     for (Note *n : trashed) {
         QString title = n->title().isEmpty() ? "(untitled)" : n->title();
@@ -47,10 +47,6 @@ void TrashDialog::populateList() {
             prefix = QString::fromUtf8("🔒 ");
         }
         QDateTime trashedAt = n->lastModified();
-        // The repository stores trashed_at in trashed_at column; however Note currently
-        // uses lastModified field for modified_at. If trashed_at is available via
-        // Note class, use it; otherwise use modified_at as an approximation.
-        // For now, display 'purge at' as trashed_at + retentionDays.
         QString purgeAt = purgeDateString(trashedAt);
 
         QString itemText = QString("%1%2\nCreated: %3 | Modified: %4 | Purge At: %5")
@@ -93,7 +89,7 @@ void TrashDialog::onRestoreSelected() {
 
     int restored = 0;
     for (qint64 id : ids) {
-        if (noteRepository->restoreNote(id)) {
+        if (trashService->restoreNote(id)) {
             ++restored;
         }
     }
@@ -119,7 +115,7 @@ void TrashDialog::onPurgeSelected() {
 
     int purged = 0;
     for (qint64 id : ids) {
-        if (noteRepository->deleteById(id)) {
+        if (trashService->purgeNote(id)) {
             ++purged;
         }
     }
