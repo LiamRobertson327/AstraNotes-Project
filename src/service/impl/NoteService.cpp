@@ -1,12 +1,12 @@
 #include "NoteService.h"
 
 #include "../../model/Note.h"
-#include "../../repository/SqliteNoteRepository.h"
+#include "../../repository/INoteRepository.h"
 
 #include <QDebug>
 #include <QVector>
 
-NoteService::NoteService(SqliteNoteRepository *repository)
+NoteService::NoteService(INoteRepository *repository)
     : m_repository(repository) {}
 
 Note *NoteService::loadNote(qint64 noteId, const QString &password, bool *wrongPassword, QString *errorMessage) {

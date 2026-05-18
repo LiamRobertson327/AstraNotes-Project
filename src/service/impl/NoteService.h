@@ -5,14 +5,14 @@
 #include <QString>
 
 class Note;
-class SqliteNoteRepository;
+class INoteRepository;
 
 /// NoteService implements INoteService and handles core note lifecycle:
 /// load, save, and create. Snapshot and trash operations are delegated to
 /// SnapshotService and TrashService respectively.
 class NoteService : public INoteService {
 public:
-    explicit NoteService(SqliteNoteRepository *repository);
+    explicit NoteService(INoteRepository *repository);
 
     // INoteService implementation
     Note *loadNote(qint64 noteId, const QString &password = QString(),
@@ -31,10 +31,10 @@ public:
 
     // Robust loader: indicates when a password is required without performing UI prompts.
     Note *loadNoteRobust(qint64 noteId, const QString &password, bool *needsPassword = nullptr,
-                         bool *wrongPassword = nullptr, QString *errorMessage = nullptr);
+                         bool *wrongPassword = nullptr, QString *errorMessage = nullptr) override;
 
 private:
-    SqliteNoteRepository *m_repository;
+    INoteRepository *m_repository;
 };
 
 #endif // NOTESERVICE_H

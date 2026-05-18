@@ -3,7 +3,7 @@
 
 #include "../interfaces/ITrashService.h"
 
-class SqliteNoteRepository;
+class INoteRepository;
 class Note;
 
 /// TrashService implements trash and retention management operations.
@@ -11,7 +11,7 @@ class Note;
 /// and automatic purging of old notes.
 class TrashService : public ITrashService {
 public:
-    explicit TrashService(SqliteNoteRepository *repository);
+    explicit TrashService(INoteRepository *repository);
 
     // ITrashService implementation
     bool trashNote(qint64 noteId) override;
@@ -23,7 +23,7 @@ public:
     bool isNoteTrashed(qint64 noteId) override;
 
 private:
-    SqliteNoteRepository *m_repository;
+    INoteRepository *m_repository;
 };
 
 #endif // TRASHSERVICE_H

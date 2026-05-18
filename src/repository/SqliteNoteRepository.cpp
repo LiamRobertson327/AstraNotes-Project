@@ -181,101 +181,6 @@ bool SqliteNoteRepository::createTablesIfNeeded() {
     return true;
 }
 
-// bool SqliteNoteRepository::save(Note &note) {
-//     return save(note, QString());
-// }
-
-// bool SqliteNoteRepository::save(Note &note, const QString &password) {
-//     qDebug() << "[SqliteNoteRepository::save] Starting save operation";
-//     qDebug() << "[SqliteNoteRepository::save] Note ID:" << note.noteId();
-//     qDebug() << "[SqliteNoteRepository::save] Title:" << note.title();
-//     qDebug() << "[SqliteNoteRepository::save] TypeId:" << note.typeId();
-
-//     QString contentToPersist = note.content();
-//     QString saltToPersist = note.encryptionSalt();
-//     QString ivToPersist = note.encryptionIv();
-//     QString tagToPersist = note.encryptionTag();
-
-//     if (note.isSecured()) {
-//         if (password.trimmed().isEmpty()) {
-//             qWarning() << "[SqliteNoteRepository::save] Secured note cannot be saved without a password";
-//             return false;
-//         }
-
-//         EncryptionService::EncryptedPayload payload = EncryptionService::encrypt(note.content(), password);
-//         if (payload.ciphertextBase64.isEmpty() || payload.saltBase64.isEmpty() || payload.ivBase64.isEmpty() || payload.tagBase64.isEmpty()) {
-//             qWarning() << "[SqliteNoteRepository::save] Encryption failed for secured note";
-//             return false;
-//         }
-
-//         contentToPersist = payload.ciphertextBase64;
-//         saltToPersist = payload.saltBase64;
-//         ivToPersist = payload.ivBase64;
-//         tagToPersist = payload.tagBase64;
-//         note.setEncryptionSalt(saltToPersist);
-//         note.setEncryptionIv(ivToPersist);
-//         note.setEncryptionTag(tagToPersist);
-//     } else {
-//         saltToPersist.clear();
-//         ivToPersist.clear();
-//         tagToPersist.clear();
-//         note.setEncryptionSalt(QString());
-//         note.setEncryptionIv(QString());
-//         note.setEncryptionTag(QString());
-//     }
-
-//     QSqlQuery query(db);
-
-//     if (note.noteId() == -1) {
-//         query.prepare(R"(
-//             INSERT INTO notes (typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, modified_at)
-//             VALUES (:typeId, :title, :content, :is_secured, :encryption_salt, :encryption_iv, :encryption_tag, CURRENT_TIMESTAMP)
-//         )");
-//         query.bindValue(":typeId", note.typeId());
-//         query.bindValue(":title", note.title());
-//         query.bindValue(":content", contentToPersist);
-//         query.bindValue(":is_secured", note.isSecured() ? 1 : 0);
-//         query.bindValue(":encryption_salt", saltToPersist);
-//         query.bindValue(":encryption_iv", ivToPersist);
-//         query.bindValue(":encryption_tag", tagToPersist);
-
-//         if (!query.exec()) {
-//             qWarning() << "[SqliteNoteRepository::save] FAILED TO INSERT:" << query.lastError().text();
-//             return false;
-//         }
-
-//         note.setNoteId(query.lastInsertId().toLongLong());
-//         return true;
-//     }
-
-//     query.prepare(R"(
-//         UPDATE notes
-//         SET typeId = :typeId,
-//             title = :title,
-//             content = :content,
-//             is_secured = :is_secured,
-//             encryption_salt = :encryption_salt,
-//             encryption_iv = :encryption_iv,
-//             encryption_tag = :encryption_tag,
-//             modified_at = CURRENT_TIMESTAMP
-//         WHERE id = :id
-//     )");
-//     query.bindValue(":typeId", note.typeId());
-//     query.bindValue(":title", note.title());
-//     query.bindValue(":content", contentToPersist);
-//     query.bindValue(":is_secured", note.isSecured() ? 1 : 0);
-//     query.bindValue(":encryption_salt", saltToPersist);
-//     query.bindValue(":encryption_iv", ivToPersist);
-//     query.bindValue(":encryption_tag", tagToPersist);
-//     query.bindValue(":id", note.noteId());
-
-//     if (!query.exec()) {
-//         qWarning() << "[SqliteNoteRepository::save] FAILED TO UPDATE:" << query.lastError().text();
-//         return false;
-//     }
-
-//     return true;
-//}
 
 bool SqliteNoteRepository::save(Note &note) {
     // If we call save without a password, we assume the note was already
@@ -958,6 +863,12 @@ QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
     
     qDebug() << "[SqliteNoteRepository::getSnapshotsByNoteId] Fetched" << snapshots.size() << "snapshots for note ID:" << noteId;
     return snapshots;
+}
+
+QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId, const QString &password) {
+    Q_UNUSED(password);
+    // For listing purposes we return the same metadata list; decryption is handled by getSnapshotById when needed.
+    return getSnapshotsByNoteId(noteId);
 }
 
 bool SqliteNoteRepository::deleteSnapshotById(qint64 snapshotId) {

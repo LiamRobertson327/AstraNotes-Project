@@ -1,4 +1,3 @@
-class SqliteNoteRepository;
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -24,9 +23,10 @@ class QCloseEvent;
 class QKeyEvent;
 
 class Note;  // Forward declaration for Phase 1
-class NoteService;
-class SnapshotService;
-class TrashService; // service layer
+class INoteRepository;
+class INoteService;
+class ISnapshotService;
+class ITrashService;
 class TrashDialog;  // UI dialog
 class NoteListController;
 
@@ -41,10 +41,10 @@ private:
     // --- Top Header ---
     QWidget *centralWidget;
         // Repository for persistence (Phase 4)
-        SqliteNoteRepository *noteRepository;
-        NoteService *noteService;
-        SnapshotService *snapshotService;
-        TrashService *trashService;
+        INoteRepository *noteRepository;
+        INoteService *noteService;
+        ISnapshotService *snapshotService;
+        ITrashService *trashService;
         NoteListController *noteListController;
     QLineEdit *searchBar;
     QPushButton *searchPrevButton;

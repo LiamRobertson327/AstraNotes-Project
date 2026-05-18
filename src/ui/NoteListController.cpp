@@ -1,13 +1,13 @@
 #include "NoteListController.h"
 
-#include "../service/impl/NoteService.h"
+#include "../service/interfaces/INoteService.h"
 #include "../model/Note.h"
 
 #include <QAbstractItemView>
 #include <QScrollBar>
 #include <QDebug>
 
-NoteListController::NoteListController(QListWidget *noteList, NoteService *noteService, QObject *parent)
+NoteListController::NoteListController(QListWidget *noteList, INoteService *noteService, QObject *parent)
     : QObject(parent),
       m_noteList(noteList),
       m_noteService(noteService),

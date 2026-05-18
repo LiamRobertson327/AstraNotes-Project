@@ -3,7 +3,7 @@
 
 #include "../interfaces/ISnapshotService.h"
 
-class SqliteNoteRepository;
+class INoteRepository;
 class Note;
 class Snapshot;
 
@@ -12,7 +12,7 @@ class Snapshot;
 /// for managing note snapshots.
 class SnapshotService : public ISnapshotService {
 public:
-    explicit SnapshotService(SqliteNoteRepository *repository);
+    explicit SnapshotService(INoteRepository *repository);
 
     // ISnapshotService implementation
     bool saveSnapshot(const Note &note, const QString &password = QString(),
@@ -27,10 +27,12 @@ public:
     // Revert workflow: create a safety snapshot of the current note state,
     // then fetch and return the requested snapshot (decrypted if password provided).
     // Returns a newly allocated Snapshot* (caller owns) or nullptr on error.
-    Snapshot *revertToSnapshot(class Note &currentNote, qint64 snapshotId, const QString &password = QString(), QString *errorMessage = nullptr);
+    Snapshot *revertToSnapshot(class Note &currentNote, qint64 snapshotId,
+                               const QString &password = QString(),
+                               QString *errorMessage = nullptr) override;
 
 private:
-    SqliteNoteRepository *m_repository;
+    INoteRepository *m_repository;
 };
 
 #endif // SNAPSHOTSERVICE_H

@@ -1,11 +1,11 @@
 #include "TrashService.h"
 
 #include "../../model/Note.h"
-#include "../../repository/SqliteNoteRepository.h"
+#include "../../repository/INoteRepository.h"
 
 #include <QDebug>
 
-TrashService::TrashService(SqliteNoteRepository *repository)
+TrashService::TrashService(INoteRepository *repository)
     : m_repository(repository) {}
 
 bool TrashService::trashNote(qint64 noteId) {

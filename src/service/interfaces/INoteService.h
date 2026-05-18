@@ -6,8 +6,6 @@
 
 class Note;
 
-class Note;
-
 /// INoteService defines the interface for core note lifecycle operations.
 /// This interface decouples the UI (MainWindow) from implementation details,
 /// allowing for easier testing and future refactoring.
@@ -44,6 +42,12 @@ public:
     virtual int countActiveNotesByType(const QString &typeId) = 0;
     virtual QVector<Note*> searchByTitlePaged(const QString &query, int pageSize, int offset) = 0;
     virtual bool trashNote(qint64 noteId) = 0;
+
+    /// Robust loader that can indicate when password input is needed.
+    virtual Note *loadNoteRobust(qint64 noteId, const QString &password,
+                                 bool *needsPassword = nullptr,
+                                 bool *wrongPassword = nullptr,
+                                 QString *errorMessage = nullptr) = 0;
 };
 
 #endif // INOTESERVICE_H

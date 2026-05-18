@@ -3,14 +3,14 @@ cmake_minimum_required(VERSION 3.19)
 # Smoke tests for AstraNotes
 project(AstraNotesTests)
 
-file(GLOB_RECURSE SMOKE_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/smoke/*.cpp"
-)
-
-add_executable(smoke_tests ${SMOKE_SOURCES})
-target_include_directories(smoke_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(smoke_tests PRIVATE Qt6::Test Qt6::Core Qt6::Sql OpenSSL::Crypto AstraCore)
-add_test(NAME smoke_tests COMMAND smoke_tests)
+file(GLOB SMOKE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/smoke/*.cpp")
+foreach(smoke_src IN LISTS SMOKE_SOURCES)
+    get_filename_component(smoke_name ${smoke_src} NAME_WE)
+    add_executable(${smoke_name} ${smoke_src})
+    target_include_directories(${smoke_name} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(${smoke_name} PRIVATE Qt6::Test Qt6::Core Qt6::Sql OpenSSL::Crypto AstraCore)
+    add_test(NAME ${smoke_name} COMMAND ${smoke_name})
+endforeach()
 
 # Build each unit test as a separate executable to avoid multiple main() definitions
 file(GLOB UNIT_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/unit/*.cpp")

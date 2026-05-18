@@ -5,7 +5,7 @@
 #include <QListWidget>
 #include <QVector>
 
-class NoteService;
+class INoteService;
 class Note;
 
 /// NoteListController owns sidebar paging and note selection plumbing.
@@ -13,7 +13,7 @@ class Note;
 class NoteListController : public QObject {
     Q_OBJECT
 public:
-    explicit NoteListController(QListWidget *noteList, NoteService *noteService, QObject *parent = nullptr);
+    explicit NoteListController(QListWidget *noteList, INoteService *noteService, QObject *parent = nullptr);
 
     void reload();
     void trashSelectedNotes();
@@ -30,7 +30,7 @@ private:
     void loadPage(int offset);
 
     QListWidget *m_noteList;
-    NoteService *m_noteService;
+    INoteService *m_noteService;
     int m_pageSize;
     int m_currentOffset;
     bool m_allLoaded;

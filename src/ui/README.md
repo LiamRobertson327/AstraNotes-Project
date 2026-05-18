@@ -8,4 +8,5 @@ Files:
 - `TrashDialog.h` / `TrashDialog.cpp`: Dialog to view/restore/purge trashed notes; uses `ITrashService` interface.
 
 Notes:
-- UI code should depend only on service interfaces (`src/service/interfaces`) rather than concrete implementations when possible.
+- UI code should depend on service interfaces (`src/service/interfaces`) rather than concrete implementations.
+- Concrete type construction belongs in the composition root (currently `MainWindow.cpp`).

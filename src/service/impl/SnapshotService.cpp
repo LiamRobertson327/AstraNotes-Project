@@ -2,11 +2,11 @@
 
 #include "../../model/Note.h"
 #include "../../model/Snapshot.h"
-#include "../../repository/SqliteNoteRepository.h"
+#include "../../repository/INoteRepository.h"
 
 #include <QDebug>
 
-SnapshotService::SnapshotService(SqliteNoteRepository *repository)
+SnapshotService::SnapshotService(INoteRepository *repository)
     : m_repository(repository) {}
 
 bool SnapshotService::saveSnapshot(const Note &note, const QString &password, QString *errorMessage) {

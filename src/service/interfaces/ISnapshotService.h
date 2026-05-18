@@ -45,6 +45,12 @@ public:
     /// @param noteId         Note ID
     /// @param maxSnapshots   Maximum snapshots to keep
     virtual void enforceSnapshotLimit(qint64 noteId, int maxSnapshots = 2) = 0;
+
+    /// Revert workflow: save a safety snapshot then load and return target snapshot.
+    /// Returns a newly allocated Snapshot* (caller owns) or nullptr on error.
+    virtual Snapshot *revertToSnapshot(Note &currentNote, qint64 snapshotId,
+                                       const QString &password = QString(),
+                                       QString *errorMessage = nullptr) = 0;
 };
 
 #endif // ISNAPSHOTSERVICE_H
