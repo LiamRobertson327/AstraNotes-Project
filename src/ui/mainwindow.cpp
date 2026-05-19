@@ -1525,11 +1525,15 @@ void MainWindow::showTrashDialog() {
 }
 
 void MainWindow::showSettingsDialog() {
-    SettingsDialog dlg(retentionDays, autoPurgeEnabled, autoSaveDebounceMs, this);
+    QSettings s;
+    bool defaultEncryption = s.value("defaultEncryptionEnabled", false).toBool();
+    SettingsDialog dlg(retentionDays, autoPurgeEnabled, autoSaveDebounceMs, defaultEncryption, this);
     if (dlg.exec() == QDialog::Accepted) {
         retentionDays = dlg.retentionDays();
         autoPurgeEnabled = dlg.autoPurgeEnabled();
         autoSaveDebounceMs = dlg.autoSaveDebounceMs();
+        bool newDefaultEnc = dlg.defaultEncryptionEnabled();
+        s.setValue("defaultEncryptionEnabled", newDefaultEnc);
         
         QSettings s;
         s.setValue("retentionDays", retentionDays);

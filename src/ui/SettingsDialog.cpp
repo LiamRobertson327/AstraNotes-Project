@@ -27,7 +27,8 @@ protected:
     }
 };
 
-SettingsDialog::SettingsDialog(int retentionDaysInit, bool autoPurgeEnabledInit, int autoSaveDebounceMs, QWidget *parent)
+SettingsDialog::SettingsDialog(int retentionDaysInit, bool autoPurgeEnabledInit, int autoSaveDebounceMs,
+                               bool defaultEncryptionEnabledInit, QWidget *parent)
     : QDialog(parent) {
     setWindowTitle("Settings");
     setMinimumSize(380, 200);
@@ -49,6 +50,10 @@ SettingsDialog::SettingsDialog(int retentionDaysInit, bool autoPurgeEnabledInit,
     autoPurgeCheck = new QCheckBox("Enable automatic purge (daily)");
     autoPurgeCheck->setChecked(autoPurgeEnabledInit);
     root->addWidget(autoPurgeCheck);
+
+    defaultEncryptionCheck = new QCheckBox("Enable default encryption for new notes");
+    defaultEncryptionCheck->setChecked(defaultEncryptionEnabledInit);
+    root->addWidget(defaultEncryptionCheck);
 
     QLabel *debounceLabel = new QLabel("Auto-save debounce interval (ms):");
     autoSaveDebounceSpinner = new ArrowOnlySpinBox(this);
@@ -85,4 +90,8 @@ bool SettingsDialog::autoPurgeEnabled() const {
 
 int SettingsDialog::autoSaveDebounceMs() const {
     return autoSaveDebounceSpinner->value();
+}
+
+bool SettingsDialog::defaultEncryptionEnabled() const {
+    return defaultEncryptionCheck ? defaultEncryptionCheck->isChecked() : false;
 }
