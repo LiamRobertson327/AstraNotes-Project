@@ -89,11 +89,24 @@ jobs:
             throw "windeployqt.exe not found."
           }
 
-          & $deployToolPath --release --no-translations --compiler-runtime "$stagedExe"
+          # CRITICAL FIX: Locate and invoke Visual Studio's environment batch file 
+          # inside the PowerShell session so windeployqt can discover the compiler runtime tools.
+          $vcvars = Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio" -Recurse -Filter "vcvars64.bat" | 
+            Select-Object -First 1 -ExpandProperty FullName
+          
+          if ($vcvars) {
+            Write-Host "Initializing MSVC Environment via: $vcvars" -ForegroundColor Cyan
+            cmd.exe /c " `"$vcvars`" && powershell -Command `"& `"$deployToolPath`" --release --no-translations --compiler-runtime `"$stagedExe`"`" "
+          } else {
+            # Fallback if vcvars64.bat isn't discovered where expected
+            & $deployToolPath --release --no-translations --compiler-runtime "$stagedExe"
+          }
+
           if ($LASTEXITCODE -ne 0) {
             throw "windeployqt failed with exit code $LASTEXITCODE"
           }
 
+          # Stage OpenSSL Dependency
           $opensslSearchRoots = @(
             "C:\Program Files\OpenSSL-Win64\bin",
             "C:\Program Files\OpenSSL\bin",
@@ -121,7 +134,10 @@ jobs:
       - name: Zip runtime bundle
         shell: pwsh
         run: |
-          7z a AstraNotes-Windows.zip "dist/AstraNotes/*"
+          # Step directly into the distribution folder to keep zip internal structures clean
+          Push-Location dist
+          7z a ../AstraNotes-Windows.zip AstraNotes
+          Pop-Location
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
