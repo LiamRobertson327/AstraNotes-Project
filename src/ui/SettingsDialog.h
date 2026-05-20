@@ -13,16 +13,19 @@ class ArrowOnlySpinBox;
 class SettingsDialog : public QDialog {
     Q_OBJECT
 public:
-    SettingsDialog(int retentionDays, bool autoPurgeEnabled, int autoSaveDebounceMs, QWidget *parent = nullptr);
+    SettingsDialog(int retentionDays, bool autoPurgeEnabled, int autoSaveDebounceMs,
+                   bool defaultEncryptionEnabled = false, QWidget *parent = nullptr);
 
     int retentionDays() const;
     bool autoPurgeEnabled() const;
     int autoSaveDebounceMs() const;
+    bool defaultEncryptionEnabled() const;
 
 private:
     QSpinBox *retentionSpin;
     QCheckBox *autoPurgeCheck;
     QSpinBox *autoSaveDebounceSpinner;
+    QCheckBox *defaultEncryptionCheck;
 };
 
 #endif // SETTINGSDIALOG_H

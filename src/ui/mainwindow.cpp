@@ -99,7 +99,7 @@ void MainWindow::resetEditorToBlankState() {
     }
     if (secureToggle) {
         secureToggle->blockSignals(true);
-        secureToggle->setChecked(false);
+        secureToggle->setChecked(defaultEncryptionEnabled);
         secureToggle->blockSignals(false);
     }
 
@@ -691,7 +691,7 @@ void MainWindow::createNewNote(const QString &typeId) {
     splitPreview->clear();
     if (secureToggle) {
         secureToggle->blockSignals(true);
-        secureToggle->setChecked(false);
+        secureToggle->setChecked(defaultEncryptionEnabled);
         secureToggle->blockSignals(false);
     }
     
@@ -723,6 +723,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     autoSaveEnabled = true;
     QSettings settingsLoad;
     autoSaveDebounceMs = settingsLoad.value("autoSaveDebounceMs", 3000).toInt();
+    defaultEncryptionEnabled = settingsLoad.value("defaultEncryptionEnabled", false).toBool();
     autoSaveTimer = new QTimer(this);
     autoSaveTimer->setInterval(autoSaveDebounceMs);
     autoSaveTimer->setSingleShot(true);
@@ -806,6 +807,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     settingsButton = new QPushButton("Settings");
     secureToggle = new QCheckBox("Secure");
     secureToggle->setToolTip("Encrypt this note when saved");
+    secureToggle->setChecked(defaultEncryptionEnabled);
     
     // Phase 5 (FR1): Auto-save toggle checkbox
     autoSaveToggle = new QCheckBox("Auto-save");
@@ -1525,13 +1527,15 @@ void MainWindow::showTrashDialog() {
 }
 
 void MainWindow::showSettingsDialog() {
-    SettingsDialog dlg(retentionDays, autoPurgeEnabled, autoSaveDebounceMs, this);
+    QSettings s;
+    SettingsDialog dlg(retentionDays, autoPurgeEnabled, autoSaveDebounceMs, defaultEncryptionEnabled, this);
     if (dlg.exec() == QDialog::Accepted) {
         retentionDays = dlg.retentionDays();
         autoPurgeEnabled = dlg.autoPurgeEnabled();
         autoSaveDebounceMs = dlg.autoSaveDebounceMs();
-        
-        QSettings s;
+        bool newDefaultEnc = dlg.defaultEncryptionEnabled();
+        defaultEncryptionEnabled = newDefaultEnc;
+        s.setValue("defaultEncryptionEnabled", newDefaultEnc);
         s.setValue("retentionDays", retentionDays);
         s.setValue("autoPurgeEnabled", autoPurgeEnabled);
         s.setValue("autoSaveDebounceMs", autoSaveDebounceMs);

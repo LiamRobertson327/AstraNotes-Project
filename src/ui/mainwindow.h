@@ -66,6 +66,7 @@ private:
     QTimer *purgeTimer;
     int retentionDays;
     bool autoPurgeEnabled;
+    bool defaultEncryptionEnabled;
 
     // --- Left Sidebar (Saved Notes) ---
     QLabel *listTitle;
