@@ -54,6 +54,42 @@
 
 ---
 
+## Revised Requirements Checklist
+
+### Functional Requirements
+
+- [x] FR1: Create and edit notes with unique ID, manual save, auto-save, unsaved-changes indicator, transactional SQLite writes, graceful error handling
+- [x] FR2: Plugin-based note creation, plugin discovery at startup, format selection UI, plugin serialization/deserialization, missing-plugin fallback
+- [x] FR3: In-note search with case-insensitive matching, highlighting, match count, navigation, and title search
+- [x] FR4: Global search across all notes by title with indexed SQLite fields and no full-body loading
+- [x] FR5: SQLite WAL mode, crash recovery, and consistent state on restart
+- [x] FR6: AES-256-GCM encryption with Argon2id key derivation and password-based decryption
+- [x] FR7: Creation date, last modified date, and format identifier metadata stored and displayed
+- [x] FR8: Automatic snapshot creation on save, max 2 snapshots, snapshot list, revert, deletion, encryption respect
+- [x] FR9: Bulk note deletion to Trash, 14-day retention, auto-purge task, restore capability, transactional operations
+
+### Non-Functional Requirements
+
+- [~] NFR1: Save/load/search/pagination performance targets
+- [ ] NFR2: Support 10,000+ notes with indexed global search and on-demand loading
+- [ ] NFR3: WAL crash recovery, graceful shutdown, and unsaved-edit recovery prompt
+
+### Security, Privacy, Reliability, and Governance Requirements
+
+- [x] SR1: AES-256-GCM encryption with Argon2id and random IV per encryption
+- [x] SR2: Immutable append-only audit log with timestamps (viewable); redaction not required for current log contents
+- [x] SR3: Prepared statements, null-byte validation, and restricted database permissions
+- [ ] SR4: Error handling with stack trace logging, non-blocking notifications, and preserved app state
+
+### Notes on scope
+
+- CacheManager was part of the original design notes, but it is not a currently wired runtime component in the present codebase snapshot.
+- The checklist above reflects the revised requirements as they are tracked in this repository, not every original design idea.
+
+- Audit log visibility: audit entries are user-visible by default to communicate system activity; admin-only restriction is reserved for cases where logs would include private data.
+
+---
+
 ## Completion Notes
 
 ### Phase 1

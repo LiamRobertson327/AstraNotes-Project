@@ -1,132 +1,123 @@
 # AstraNotes Class Responsibilities and Plugin Integration Guide
 
 ## Why this guide exists
-The requirements are dense and each one spans multiple behaviors. This guide maps the key classes to concrete responsibilities and answers how plugin integration and encryption should work before implementation starts.
+This document maps the current architecture to concrete responsibilities so the project stays aligned with the interface-first design that is actually implemented in the codebase.
+
+## Current architecture at a glance
+
+- `MainWindow` is the composition root. It creates the concrete repository and service implementations and wires them into the UI.
+- UI classes depend on service interfaces, not concrete implementations.
+- Services depend on `INoteRepository`, not on `SqliteNoteRepository` directly.
+- `SqliteNoteRepository` owns SQLite-specific persistence details.
+- `IPlugin` exists as a public extension contract, but the current codebase snapshot does not include a runtime plugin manager or plugin registry implementation.
+- Audit logging, snapshots, trash, and encryption are handled by dedicated classes or services, not by the UI.
 
 ## Core class responsibilities
 
 ### `Note`
-- Holds domain data: `id`, `title`, `content` or payload reference, timestamps, `typeId`, and state flags.
-- `typeId` identifies which plugin owns serialization and format-specific behavior.
-- Does not perform persistence, plugin loading, or encryption orchestration.
-
-### `NoteService`
-- Main application orchestrator for create/open/save/delete/search workflows.
-- Validates inputs (where integrated per architecture).
-- Resolves plugin from `typeId` through `PluginManager`.
-- Calls repository methods for transactional persistence.
-- Calls `EncryptionService` when note type/policy requires encryption.
-- Owns workflow decisions such as manual save, autosave, restore, and trash operations.
+- Holds note domain data such as ID, title, content, type, timestamps, encryption state, and trash state.
+- Does not talk to the database, UI, or filesystem on its own.
 
 ### `INoteRepository`
-- Interface for note persistence operations (`save`, `getById`, `search`, snapshot and trash operations, etc.).
-- Defines transaction boundaries and persistence contract independent of SQLite.
-- Should be the source of truth for database write/read semantics.
+- Abstract persistence contract used by the service layer.
+- Exposes CRUD, search, snapshot, trash, and storage-helper operations.
+- Exists so services can depend on one abstraction regardless of the database backend.
 
-### `SQLiteNoteRepository`
-- Concrete `INoteRepository` implementation.
-- Uses SQLite transactions, WAL mode, prepared statements, indexes/FTS.
-- Persists note records, snapshots, trash flags/retention metadata.
-- Should not contain UI logic or plugin discovery logic.
+### `SqliteNoteRepository`
+- Concrete SQLite implementation of `INoteRepository`.
+- Owns SQL statements, transaction handling, schema setup, snapshot storage, and trash persistence.
+- May have SQLite-specific helpers internally, but callers should prefer the interface whenever possible.
 
-### `PluginManager`
-- Discovers and loads plugins from configured directory at startup and refresh.
-- Keeps a registry of enabled plugins keyed by plugin id and supported note type ids.
-- Resolves plugin ownership by `typeId`.
+### `INoteService`
+- Defines the main note lifecycle contract used by the UI.
+- Covers load, save, create, search, counting, and trash-related note operations.
 
-### `IPlugin`
-- Contract for plugin metadata and format conversion behavior.
-- Should expose at least: format identity, serialize, deserialize, capability metadata.
-- Can include optional hooks, but core open/save orchestration should remain in `NoteService`.
+### `ISnapshotService`
+- Defines version-history operations such as save snapshot, list snapshots, delete snapshots, enforce limits, and revert flow.
+
+### `ITrashService`
+- Defines trash, restore, purge, and trash-reporting operations.
+
+### `NoteService`
+- Implements `INoteService` and coordinates note workflows.
+- Uses `INoteRepository` for persistence.
+- Handles note loading, saving, creation, searching, and trash handoff.
+- Does not own direct UI logic.
+
+### `SnapshotService`
+- Implements `ISnapshotService`.
+- Coordinates snapshot creation, retrieval, pruning, and revert behavior.
+- Uses `INoteRepository` for snapshot persistence and retrieval.
+
+### `TrashService`
+- Implements `ITrashService`.
+- Coordinates soft delete, restore, purge, and trash queries through `INoteRepository`.
+
+### `MainWindow`
+- Acts as the composition root for the desktop app.
+- Creates `SqliteNoteRepository`, then passes it into `NoteService`, `SnapshotService`, and `TrashService`.
+- Passes service interfaces into controllers and UI helpers.
+
+### `NoteListController`
+- UI controller for the notes list and pagination behavior.
+- Depends on `INoteService`.
+
+### `AuditLogPanel`
+- Read-only UI for displaying append-only audit log entries.
+- Does not generate audit events itself; it displays them.
+
+### `AuditLogger`
+- Central audit logging utility that writes the immutable log stream.
+- Keeps the audit format consistent across actions.
 
 ### `EncryptionService`
-- Performs AES-256-GCM encryption/decryption and Argon2id key derivation.
-- Generates IV per encryption and packages crypto metadata with ciphertext payload.
-- Returns explicit success/error results for `NoteService` to handle.
+- Handles encryption and decryption responsibilities.
+- Keeps cryptographic details out of the repository and UI layers.
 
-### `CacheManager`
-- LRU cache for recently accessed notes.
-- Reduces repeated DB reads and improves load performance.
-- Must be invalidated on updates, restores, and trash/restore transitions.
+### `IPlugin`
+- Public plugin contract for extension authors.
+- Defines metadata and serialization/deserialization behavior.
+- In the current snapshot, it is an interface contract rather than a fully wired runtime plugin system.
 
-### `NoteSnapshot`
-- Immutable version payload captured on snapshot events.
-- Linked to `noteId`, timestamped, and managed by snapshot retention rules.
+## Plugin integration in the current project
 
-## How plugins integrate with `Note`
+### What the codebase currently supports
+- The project exposes `IPlugin` as an extension contract.
+- The data model includes note type information that can be used for future routing.
+- The architecture keeps room for a plugin layer without forcing the UI or repository to know plugin internals.
 
-## 1) Ownership model
-- A `Note` is bound to a plugin by `typeId`.
-- `typeId` maps to one plugin that owns format-specific serialization/deserialization.
+### What is not currently in the codebase snapshot
+- There is no active `PluginManager` implementation in the current source tree.
+- There is no runtime plugin registry or discovery flow wired into `MainWindow` or the services.
+- Plugin execution is therefore a design extension point, not a current runtime dependency.
 
-## 2) Save flow (recommended)
-1. `NoteService.saveNote(note)` receives domain object.
-2. `NoteService` resolves plugin by `note.typeId`.
-3. If secure/private policy applies, `EncryptionService` encrypts payload first.
-4. Plugin serializes note payload to repository format.
-5. `SQLiteNoteRepository.save(...)` commits transaction.
+### Implication for the architecture
+- If plugin loading is added later, it should sit behind its own abstraction and remain outside the UI and repository layers.
+- `NoteService` should continue to orchestrate the note workflow, while a future plugin layer handles only plugin-specific conversion.
 
-## 3) Open flow (recommended)
-1. `NoteService.openNote(id)` reads persisted row via repository.
-2. `NoteService` resolves plugin from stored `typeId`.
-3. Plugin deserializes payload into domain object.
-4. If payload is encrypted, `NoteService` requests password and calls `EncryptionService.decrypt(...)`.
-5. Returned note is cached and sent to UI.
+## Encryption boundary
 
-## Voice plugin integration
-A voice plugin should not replace the core note lifecycle. It should implement format-specific handlers while `NoteService` remains the orchestrator.
+- Encryption belongs in `EncryptionService`.
+- The service layer is the correct place to invoke encryption or decryption.
+- Repository code should store and retrieve encrypted payloads, but not decide cryptographic policy.
 
-### Voice plugin should provide
-- Serializer/deserializer for audio payload metadata and storage references.
-- Optional capabilities such as waveform metadata, duration, transcription fields.
-- Validation for voice-specific constraints.
+## Snapshot and trash flow
 
-### Voice plugin should not own
-- Database transactions.
-- Global save/open control flow.
-- Security policy decisions (except declaring secure capability support).
+- Snapshot creation and revert logic belong in `SnapshotService`.
+- Trash, restore, and purge logic belong in `TrashService`.
+- `SqliteNoteRepository` persists the resulting state changes.
 
-## Where encryption should be called
+## Dependency rule for this project
 
-### Recommended boundary
-- Encryption/decryption is performed by `EncryptionService`, invoked by `NoteService`.
-- Plugins should not implement cryptography directly unless there is a hard requirement for plugin-specific crypto.
+- UI classes depend on service interfaces.
+- Services depend on `INoteRepository`.
+- The concrete `SqliteNoteRepository` is only created at the composition root.
+- This is the part of the architecture that matters most for testability and substitution.
 
-### Why
-- Centralizes cryptography policy and key-derivation correctness.
-- Avoids inconsistent encryption logic across plugins.
-- Keeps auditability and error handling consistent.
+## Updated design summary
 
-## Do plugins need `openNote()`?
-Short answer: not required for every plugin.
-
-Recommended interface pattern:
-- Required plugin methods: `serialize(note)`, `deserialize(payload)`, capability metadata.
-- Optional hooks: `onBeforeSave(note)`, `onAfterLoad(note)` for plugin-specific processing.
-
-`NoteService` should keep a single `openNote()` workflow and delegate only plugin-specific conversion steps, selected by `typeId`.
-
-## How the app decides which plugin function to call
-- Store `typeId` with each note record.
-- On open/save, `NoteService` resolves plugin by `typeId` through `PluginManager`.
-- If plugin missing/fails:
-  - return explicit error,
-  - log and notify user,
-  - keep note in unsupported/read-only state until compatible plugin is available.
-
-## Suggested implementation checklist
-- Define/confirm `IPlugin` required methods: identity + serialize/deserialize.
-- Define optional plugin hooks (if needed) without moving orchestration out of `NoteService`.
-- Keep encryption in `EncryptionService`; call from `NoteService` before/after plugin conversion as required by format pipeline.
-- Persist `typeId`, encryption metadata, and trash/snapshot metadata in repository schema.
-- Add explicit sequence diagrams for:
-  - save with plugin + encryption,
-  - open with plugin + password-gated decryption,
-  - missing-plugin fallback path.
-
-## Design decision summary
-- `NoteService` orchestrates.
-- `IPlugin` converts format payloads.
-- `EncryptionService` handles cryptography.
-- `SQLiteNoteRepository` persists transactionally.
-- `typeId` is the routing key between note and plugin behavior.
+- `MainWindow` wires the app together.
+- `NoteService`, `SnapshotService`, and `TrashService` define the behavior the UI uses.
+- `SqliteNoteRepository` owns SQLite persistence.
+- `IPlugin` remains a future-facing contract, not a currently wired subsystem.
+- `AuditLogger` and `AuditLogPanel` handle the audit trail UI and log display.
