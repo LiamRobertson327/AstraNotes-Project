@@ -13,7 +13,7 @@ endif()
 
 # 1. Setup the Qt Path
 set(Qt6_DIR "C:/Qt/6.11.0/mingw_64/lib/cmake/Qt6")
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Sql Test)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Widgets Sql Test)
 
 # 2. Find OpenSSL
 if(NOT DEFINED ENV{GITHUB_ACTIONS})
