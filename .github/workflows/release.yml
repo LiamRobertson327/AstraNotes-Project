@@ -131,6 +131,44 @@ jobs:
             Copy-Item -Path $osslModules -Destination (Join-Path $bundleDir "ossl-modules") -Recurse -Force
           }
 
+          # Ensure MSVC runtime DLLs are present (VCRUNTIME/MSVCP)
+          $msvcDlls = @('VCRUNTIME140.dll','MSVCP140.dll','VCRUNTIME140_1.dll')
+          foreach ($dll in $msvcDlls) {
+            $found = $null
+
+            # Common system locations
+            $systemLocations = @('C:\Windows\System32','C:\Windows\SysWOW64')
+            foreach ($loc in $systemLocations) {
+              $candidate = Join-Path $loc $dll
+              if (Test-Path $candidate) { $found = $candidate; break }
+            }
+
+            # Search PATH if not found yet
+            if (-not $found) {
+              $pathDirs = ($env:PATH -split ';') | Where-Object { $_ -and (Test-Path $_) }
+              foreach ($p in $pathDirs) {
+                $candidate = Join-Path $p $dll
+                if (Test-Path $candidate) { $found = $candidate; break }
+              }
+            }
+
+            # Fallback: search Visual Studio folders (might be slow but reliable on runners)
+            if (-not $found) {
+              $vsRoots = Get-ChildItem 'C:\Program Files\Microsoft Visual Studio' -Directory -ErrorAction SilentlyContinue
+              foreach ($r in $vsRoots) {
+                $candidate = Get-ChildItem -Path $r.FullName -Recurse -Include $dll -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+                if ($candidate) { $found = $candidate; break }
+              }
+            }
+
+            if ($found) {
+              Write-Host "Copying runtime DLL $dll from $found"
+              Copy-Item -LiteralPath $found -Destination $bundleDir -Force
+            } else {
+              Write-Warning "Could not locate runtime DLL: $dll"
+            }
+          }
+
       - name: Zip runtime bundle
         shell: pwsh
         run: |
