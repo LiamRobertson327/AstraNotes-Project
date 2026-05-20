@@ -56,31 +56,72 @@ jobs:
           cd build
           ctest -C Release --output-on-failure
 
-      - name: Package with Windeployqt
+      - name: Stage Runtime Bundle (inline)
         shell: pwsh
         run: |
-          cd build
-          $exePath = Get-ChildItem -Recurse -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
-          mkdir AstraNotesTaker
-          copy $exePath AstraNotesTaker/
+          $repoRoot = Get-Location
+          $buildDir = Join-Path $repoRoot "build"
+          $bundleDir = Join-Path $repoRoot "dist/AstraNotes"
 
-          # 1. Run windeployqt
-          $deployTool = Get-ChildItem -Path "$env:Qt6_DIR" -Recurse -Filter "windeployqt.exe" | Select-Object -First 1 -ExpandProperty FullName
-          & $deployTool --release --no-translations --compiler-runtime AstraNotesTaker/AstraNotes.exe
-          
-          # 2. FIX: Copy OpenSSL DLLs from the ACTUAL OpenSSL install path
-          # We know from logs it is at C:\Program Files\OpenSSL\bin
-          Write-Host "Bundling OpenSSL DLLs from System Path..."
-          copy "C:\Program Files\OpenSSL\bin\libcrypto-3-x64.dll" AstraNotesTaker/
-          copy "C:\Program Files\OpenSSL\bin\libssl-3-x64.dll" AstraNotesTaker/
+          if (Test-Path $bundleDir) {
+            Remove-Item -Recurse -Force $bundleDir
+          }
+          New-Item -ItemType Directory -Path $bundleDir | Out-Null
 
-          # 3. FIX: Copy the modules folder if it exists there
-          if (Test-Path "C:\Program Files\OpenSSL\bin\ossl-modules") {
-              xcopy /E /I "C:\Program Files\OpenSSL\bin\ossl-modules" AstraNotesTaker/ossl-modules
+          $exePath = Get-ChildItem -Path $buildDir -Recurse -Filter "AstraNotes.exe" |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $exePath) {
+            throw "AstraNotes.exe not found in build output."
           }
 
-          # 4. Zip it up
-          7z a ../AstraNotes-Windows.zip "AstraNotesTaker/*"
+          $stagedExe = Join-Path $bundleDir "AstraNotes.exe"
+          Copy-Item -LiteralPath $exePath -Destination $stagedExe -Force
+
+          $deployTool = Get-Command windeployqt -ErrorAction SilentlyContinue
+          if (-not $deployTool) {
+            $deployToolPath = Get-ChildItem -Path "$env:QT_ROOT_DIR" -Recurse -Filter "windeployqt.exe" |
+              Select-Object -First 1 -ExpandProperty FullName
+          } else {
+            $deployToolPath = $deployTool.Source
+          }
+
+          if (-not $deployToolPath) {
+            throw "windeployqt.exe not found."
+          }
+
+          & $deployToolPath --release --no-translations --compiler-runtime "$stagedExe"
+          if ($LASTEXITCODE -ne 0) {
+            throw "windeployqt failed with exit code $LASTEXITCODE"
+          }
+
+          $opensslSearchRoots = @(
+            "C:\Program Files\OpenSSL-Win64\bin",
+            "C:\Program Files\OpenSSL\bin",
+            "C:\Strawberry\c\bin"
+          )
+          $opensslBin = $opensslSearchRoots | Where-Object { Test-Path (Join-Path $_ "libcrypto-3-x64.dll") } | Select-Object -First 1
+
+          if (-not $opensslBin) {
+            $pathDirs = ($env:PATH -split ';') | Where-Object { $_ -and (Test-Path $_) }
+            $opensslBin = $pathDirs | Where-Object { Test-Path (Join-Path $_ "libcrypto-3-x64.dll") } | Select-Object -First 1
+          }
+
+          if (-not $opensslBin) {
+            throw "OpenSSL runtime DLLs not found (libcrypto-3-x64.dll / libssl-3-x64.dll)."
+          }
+
+          Copy-Item -LiteralPath (Join-Path $opensslBin "libcrypto-3-x64.dll") -Destination $bundleDir -Force
+          Copy-Item -LiteralPath (Join-Path $opensslBin "libssl-3-x64.dll") -Destination $bundleDir -Force
+
+          $osslModules = Join-Path $opensslBin "ossl-modules"
+          if (Test-Path $osslModules) {
+            Copy-Item -Path $osslModules -Destination (Join-Path $bundleDir "ossl-modules") -Recurse -Force
+          }
+
+      - name: Zip runtime bundle
+        shell: pwsh
+        run: |
+          7z a AstraNotes-Windows.zip "dist/AstraNotes/*"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
