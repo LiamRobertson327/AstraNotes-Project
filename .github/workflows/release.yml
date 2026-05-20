@@ -132,7 +132,7 @@ jobs:
           }
 
           # Ensure MSVC runtime DLLs are present (VCRUNTIME/MSVCP)
-          $msvcDlls = @('VCRUNTIME140.dll','MSVCP140.dll','VCRUNTIME140_1.dll')
+          $msvcDlls = @('VCRUNTIME140.dll','VCRUNTIME140_1.dll','MSVCP140.dll','MSVCP140_1.dll','MSVCP140_2.dll')
           foreach ($dll in $msvcDlls) {
             $found = $null
 
