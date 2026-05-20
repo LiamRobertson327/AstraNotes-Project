@@ -6,7 +6,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(MSVC)
-    add_compile_options(/std:c++23)
+    # Newer MSVC toolchains use -std:c++latest for C++23 and may break Qt 6.5's stdext lookup.
+    # Force-include a tiny compat header for all translation units.
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/src/compat/msvc_qt_compat.h"
+        "${CMAKE_BINARY_DIR}/msvc_qt_compat.h"
+        COPYONLY
+    )
+    add_compile_options(/FImsvc_qt_compat.h)
 endif()
 
 # 1. Setup the Qt Path
