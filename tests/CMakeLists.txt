@@ -21,3 +21,13 @@ foreach(unit_src IN LISTS UNIT_SOURCES)
     target_link_libraries(${unit_name} PRIVATE Qt6::Test Qt6::Core Qt6::Sql OpenSSL::Crypto AstraCore)
     add_test(NAME ${unit_name} COMMAND ${unit_name})
 endforeach()
+
+# Integration tests that exercise multiple layers together.
+file(GLOB INTEGRATION_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/integration/*.cpp")
+foreach(integration_src IN LISTS INTEGRATION_SOURCES)
+    get_filename_component(integration_name ${integration_src} NAME_WE)
+    add_executable(${integration_name} ${integration_src})
+    target_include_directories(${integration_name} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(${integration_name} PRIVATE Qt6::Test Qt6::Core Qt6::Sql OpenSSL::Crypto AstraCore)
+    add_test(NAME ${integration_name} COMMAND ${integration_name})
+endforeach()
