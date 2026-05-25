@@ -71,6 +71,7 @@ private:
 
     // --- Left Sidebar (Saved Notes) ---
     QLabel *listTitle;
+    QLineEdit *savedNotesSearchBar;
     QListWidget *noteList;
     QLabel *systemInfoLabel;
 

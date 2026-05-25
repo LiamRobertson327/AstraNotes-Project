@@ -273,6 +273,8 @@ void MainWindow::updateSystemInfoDisplay() {
     }
 
     const double sizeMb = static_cast<double>(dbSizeBytes) / (1024.0 * 1024.0);
+    const int trashedNotes = trashService ? trashService->countTrashedNotes() : 0;
+    lines << QString("Trash: %1").arg(trashedNotes);
     lines << QString("Database: %1").arg(dbSizeBytes > 0 ? QString::number(sizeMb, 'f', 2) + " MB" : "0 MB");
 
     systemInfoLabel->setText(lines.join("\n"));
@@ -343,13 +345,10 @@ void MainWindow::updateSearchState(const QString &query) {
     currentSearchMatches.clear();
     currentSearchMatchIndex = -1;
 
-    highlightCurrentTitleSearch(query);
-    updateSavedNotesSearchState(query);
-
     QTextEdit *editor = activeSearchEditor();
     if (!editor || query.trimmed().isEmpty()) {
         if (searchMatchLabel) {
-            searchMatchLabel->setText("Search notes");
+            searchMatchLabel->setText("Search note content");
         }
         if (searchPrevButton) {
             searchPrevButton->setEnabled(false);
@@ -369,15 +368,6 @@ void MainWindow::updateSearchState(const QString &query) {
     while ((index = content.indexOf(needle, index, Qt::CaseInsensitive)) != -1) {
         currentSearchMatches.append(qMakePair(index, needle.size()));
         index += qMax(1, needle.size());
-    }
-
-    const bool titleMatches = titleBar && titleBar->text().contains(needle, Qt::CaseInsensitive);
-    int sidebarMatches = 0;
-    for (int i = 0; i < noteList->count(); ++i) {
-        QListWidgetItem *item = noteList->item(i);
-        if (!item->isHidden()) {
-            ++sidebarMatches;
-        }
     }
 
     if (!currentSearchMatches.isEmpty()) {
@@ -402,14 +392,10 @@ void MainWindow::updateSearchState(const QString &query) {
     }
 
     if (searchMatchLabel) {
-        if (!currentSearchMatches.isEmpty() && (titleMatches || sidebarMatches > 0)) {
-            searchMatchLabel->setText(QString("%1 in note, %2 note(s)").arg(currentSearchMatches.size()).arg(sidebarMatches));
-        } else if (!currentSearchMatches.isEmpty()) {
-            searchMatchLabel->setText(QString("%1 of %2").arg(currentSearchMatchIndex + 1).arg(currentSearchMatches.size()));
-        } else if (titleMatches || sidebarMatches > 0) {
-            searchMatchLabel->setText(QString("%1 note(s) matched").arg(sidebarMatches));
-        } else {
+        if (currentSearchMatches.isEmpty()) {
             searchMatchLabel->setText("No matches");
+        } else {
+            searchMatchLabel->setText(QString("%1 of %2").arg(currentSearchMatchIndex + 1).arg(currentSearchMatches.size()));
         }
     }
 }
@@ -511,6 +497,10 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
 
         if (noteListController) {
             noteListController->noteSaved(currentNote.get());
+        }
+
+        if (savedNotesSearchBar) {
+            updateSavedNotesSearchState(savedNotesSearchBar->text());
         }
 
         if (createSnapshot) {
@@ -654,6 +644,10 @@ void MainWindow::populateFormattingToolbar(const QString &typeId) {
 void MainWindow::loadNotesFromDatabase() {
     if (noteListController) {
         noteListController->reload();
+    }
+
+    if (savedNotesSearchBar) {
+        updateSavedNotesSearchState(savedNotesSearchBar->text());
     }
 }
 
@@ -853,7 +847,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QHBoxLayout *headerLayout = new QHBoxLayout();
     searchBar = new QLineEdit();
     searchBar->setObjectName("searchBar");
-    searchBar->setPlaceholderText("Search notes...");
+    searchBar->setPlaceholderText("Search note content...");
 
     searchPrevButton = new QPushButton("<");
     searchPrevButton->setFixedWidth(36);
@@ -863,7 +857,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     searchNextButton->setFixedWidth(36);
     searchNextButton->setEnabled(false);
 
-    searchMatchLabel = new QLabel("Search notes");
+    searchMatchLabel = new QLabel("Search note content");
     searchMatchLabel->setObjectName("searchMatchLabel");
     
     newButton = new QPushButton("+ New Note");
@@ -916,6 +910,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     listTitle = new QLabel("Saved Notes");
     listTitle->setObjectName("listTitle");
+
+    savedNotesSearchBar = new QLineEdit();
+    savedNotesSearchBar->setObjectName("savedNotesSearchBar");
+    savedNotesSearchBar->setPlaceholderText("Search saved notes...");
+    savedNotesSearchBar->setClearButtonEnabled(true);
     
     noteList = new QListWidget();
     noteList->setObjectName("noteList");
@@ -923,6 +922,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     noteList->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     leftTileLayout->addWidget(listTitle);
+    leftTileLayout->addWidget(savedNotesSearchBar);
     leftTileLayout->addWidget(noteList);
 
     QFrame *systemInfoBox = new QFrame();
@@ -1125,6 +1125,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         searchBar->setFocus();
     });
 
+    connect(searchBar, &QLineEdit::returnPressed, [this](){
+        navigateSearchMatch(1);
+    });
+
+    connect(savedNotesSearchBar, &QLineEdit::textChanged, [this](const QString &text){
+        updateSavedNotesSearchState(text);
+    });
+
     connect(searchPrevButton, &QPushButton::clicked, [this](){
         navigateSearchMatch(-1);
     });
@@ -1312,6 +1320,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // Phase 5: Load initial page of saved notes from database on startup
     if (noteListController) {
         noteListController->reload();
+    }
+    if (savedNotesSearchBar) {
+        updateSavedNotesSearchState(savedNotesSearchBar->text());
     }
     updateSystemInfoDisplay();
     // Phase 8: Load retention settings and purge behavior
@@ -1620,6 +1631,9 @@ void MainWindow::showTrashDialog() {
     connect(&dlg, &TrashDialog::changesApplied, this, [this]() {
         // Refresh sidebar and current note state after actions
         if (noteListController) noteListController->reload();
+        if (savedNotesSearchBar) {
+            updateSavedNotesSearchState(savedNotesSearchBar->text());
+        }
         updateSystemInfoDisplay();
         if (currentNote && currentNote->noteId() > 0) {
             // If current note was restored/purged, reload
