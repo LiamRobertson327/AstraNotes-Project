@@ -12,6 +12,8 @@
 **Approach:** Keep all submission-required material; consolidate overlapping planning/architecture docs; add 4 new docs for completeness  
 **Result:** Clear single source of truth per category, reduced redundancy, explicit submission readiness
 
+**Current Update:** The README has already been expanded and the final audit now includes code-review findings. This proposal should be read as a submission-packet organization guide, not as a mandate to delete useful historical context immediately.
+
 ---
 
 ## Proposed Core Documentation Set (Tier 1: Always Active)
@@ -193,6 +195,43 @@
 
 ---
 
+## Consolidation Guidance for the Final Stretch
+
+With less than two weeks remaining, prioritize reviewer clarity over perfect archival cleanup.
+
+### Must remain easy to find
+
+- The root `README.md`
+- `docs/FINAL_SUBMISSION_AUDIT.md`
+- `docs/ASTRANOTES_PRD.md`
+- `docs/USER_STORIES.md`
+- `docs/ARCHITECTURE.md`
+- `docs/REQUIREMENT_TRACEABILITY_MATRIX.md`
+- `docs/TEST_PLAN.md`
+- `docs/EXECUTION_EVIDENCE.md`
+
+### Can stay as supporting context
+
+- `docs/BACKLOG.md`
+- `docs/DESIGN_INDEX.md`
+- `docs/TRACEABILITY_CHAIN.md`
+- `docs/SDLC_PHASE_MAPPING.md`
+- `docs/PROJECT_STRUCTURE.md`
+- `docs/ACTIONS_PERFORMED.md`
+
+### Can remain deferred
+
+- Runtime DLL plugin loading work in `docs/PLUGIN_DLL_IMPLEMENTATION_PLAN.md`
+- Installer packaging work if it does not directly affect the current defense rubric
+
+### Recommended wording for the defense packet
+
+- "The project meets the core functional scope and documents the remaining edge cases explicitly."
+- "Security and non-functional requirements are addressed through implementation, testing, and traceability rather than every edge case being fully modeled in UML."
+- "Dynamic DLL plugin loading and installer packaging are future enhancements, not blockers for the current submission."
+
+---
+
 ## Tier 2: Supporting Traceability & Validation (Keep, No Action)
 
 | Document | Purpose | Status |
@@ -291,6 +330,16 @@
 | Supporting Traceability (Tier 2) | 11 | TRACEABILITY_CHAIN.md, SDLC_PHASE_MAPPING.md, BACKLOG.md, ... |
 | Historical Archive | 5+ | docs/legacy/ |
 | **Total Active** | **23** | (reduced from 31 by consolidating overlaps) |
+
+---
+
+## Practical Recommendation
+
+Do not spend the remaining time forcing the documentation set down to a perfect theoretical minimum. Instead:
+
+1. Keep the core set above easy to defend.
+2. Make the final audit the entry point for the reviewer.
+3. Leave the more speculative plugin-DLL and installer work documented as future work, not current obligations.
 
 ---
 

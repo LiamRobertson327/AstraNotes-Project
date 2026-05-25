@@ -136,8 +136,6 @@ bool EncryptionService::deriveKey(const QString &password,
 EncryptionService::EncryptedPayload EncryptionService::encrypt(const QString &plaintext,
                                                                const QString &password) {
     EncryptedPayload payload;
-    // QMessageBox::information(nullptr, "Encryption Input", "Encrypting this text: " + plaintext.left(20) + "...");
-
     const QByteArray salt = randomBytes(kSaltSize);
     const QByteArray iv = randomBytes(kIvSize);
     if (salt.isEmpty() || iv.isEmpty()) {
@@ -225,10 +223,6 @@ EncryptionService::EncryptedPayload EncryptionService::encrypt(const QString &pl
     payload.ivBase64 = QString::fromLatin1(iv.toBase64());
     payload.tagBase64 = QString::fromLatin1(tag.toBase64());
 
-    //make this a qdebug
-    // QMessageBox::information(nullptr, "ENCRYPT (Saving to DB)", 
-    //     QString("Tag: %1\nSalt: %2").arg(payload.tagBase64).arg(payload.saltBase64));
-
     return payload;
 }
 
@@ -239,18 +233,10 @@ EncryptionService::DecryptResult EncryptionService::decrypt(const QString &ciphe
                                                             const QString &ivBase64,
                                                             const QString &tagBase64) {
     DecryptResult result;
-    //make this qdebug for logs
-    // QMessageBox::warning(nullptr, "DECRYPT (Loaded from DB)", 
-    // QString("Tag: %1\nSalt: %2").arg(tagBase64).arg(saltBase64));
-
     const QByteArray ciphertext = QByteArray::fromBase64(ciphertextBase64.toLatin1(), QByteArray::Base64Encoding);
     const QByteArray salt = QByteArray::fromBase64(saltBase64.toLatin1(), QByteArray::Base64Encoding);
     const QByteArray iv = QByteArray::fromBase64(ivBase64.toLatin1(), QByteArray::Base64Encoding);
     const QByteArray tag = QByteArray::fromBase64(tagBase64.toLatin1(), QByteArray::Base64Encoding);
-
-    // QString diagnostic = QString("DEBUG DATA:\nSalt: %1\nIV: %2\nTag: %3")
-    //                  .arg(saltBase64).arg(ivBase64).arg(tagBase64);
-    // QMessageBox::critical(nullptr, "Database Load Check", diagnostic);
 
     if (ciphertext.isEmpty() || salt.isEmpty() || iv.isEmpty() || tag.isEmpty()) {
         result.errorMessage = "Missing encryption data";

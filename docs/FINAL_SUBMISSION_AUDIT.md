@@ -16,6 +16,44 @@ Professor requirements checked:
 - Clear README with setup and usage instructions
 - Evidence of AI-assisted SDLC work with human validation
 
+## Current Implementation Audit Snapshot
+
+The repository is in a defensible submission state, but the source review still shows a few correctness and maintainability risks that should be documented rather than ignored.
+
+### Strengths Observed
+
+- Clear layered separation: UI -> services -> repository -> storage/crypto.
+- The encryption path uses modern primitives and is isolated in `src/crypto`.
+- The repository layer owns SQL, schema creation, WAL mode, snapshot storage, and trash handling.
+- The plugin system is documented and the current UI wiring is coherent for the built-in note types.
+
+### Issues Worth Documenting
+
+- `src/repository/SqliteNoteRepository.cpp` contains a save-path inconsistency around encrypted content handling: the code comment indicates the content should remain untouched in one branch, but the implementation still writes the encrypted payload back through the note object. This is not a blocker for the submission, but it should be called out as a correctness risk.
+- `src/ui/mainwindow.cpp` has a few defensive-programming gaps around editor selection and search highlighting that are worth tightening if time allows.
+- `src/ui/NoteListController.cpp` and `src/service/impl/TrashService.cpp` are functionally acceptable, but both still leave room for pagination and query-efficiency improvements.
+- `src/crypto/EncryptionService.cpp` still contains commented diagnostic code that should be removed before final submission to reduce noise.
+
+### DLL / Plugin Testing Reality Check
+
+The current codebase does not yet rely on runtime-loaded DLL plugins in production flow. The DLL work is captured in `docs/PLUGIN_DLL_IMPLEMENTATION_PLAN.md` as a future extension, which means testing that path is a separate effort from validating the current submission.
+
+- If the project stays on built-in plugins, testing is straightforward and can be done through unit/integration tests against the current plugin classes.
+- If the project moves to real DLL loading, the effort increases to medium/high because the test suite must cover shared-library packaging, discovery, loader failures, ABI/runtime compatibility, and fallback behavior.
+- Given the remaining schedule, this is a reasonable defer item unless the course rubric explicitly requires runtime plugin DLLs.
+
+### Scope Decision for the Remaining Time
+
+The installer idea can also stay deferred for now. The core GitHub Actions issue is already resolved, so final effort should stay on documentation quality, traceability, and any remaining robustness fixes that directly affect the defense.
+
+### Deferred DLL Roadmap
+
+Runtime-loaded DLL plugins were considered as a future enhancement, but they are not part of the initial release scope.
+
+- Current state: built-in plugins are sufficient for the submission.
+- Next step if revisited: convert the plugin contract to a true Qt shared-library plugin model, add discovery/loading, and keep host-owned UI actions to avoid ABI ownership problems.
+- Why deferred: the implementation and test surface grows quickly, and it does not materially improve the defense readiness of the current release.
+
 ## KEEP (Existing Documents That Are Useful)
 
 ### Requirements and Planning
@@ -28,6 +66,12 @@ Professor requirements checked:
 - `docs/SPRINT_ZERO_PLAN.md`
 - `docs/SPRINTS_IMPLEMENTATION_PLAN.md`
 - `docs/IMPLEMENTATION_ROADMAP.md`
+
+### Consolidation Anchor
+
+- `docs/DOCUMENTATION_STRUCTURE_PROPOSAL.md` should be treated as the roadmap for consolidation.
+- `docs/FINAL_SUBMISSION_AUDIT.md` should be treated as the authoritative readiness checklist for the defense packet.
+- If a future cleanup pass is done, this audit should be updated to reflect which supporting docs were merged, archived, or kept.
 
 ### Architecture and UML
 
@@ -123,6 +167,14 @@ If you prefer fewer files, consolidate into one:
 
 - `docs/OPERATIONS_NOTES.md` with Security, Deployment, and Maintenance sections
 
+### 6) Final Submission Decision Summary
+
+Record the current plan in one place so the defense packet can be defended quickly:
+
+- Core app functionality is complete enough for the current scope.
+- Security and non-functional requirements are mostly covered through architecture, implementation, and traceability docs, but a few should be clearly labeled as partially traced or verified by testing rather than fully explicit in UML.
+- Runtime DLL plugin loading and a dedicated installer are useful enhancements, but they are not required to keep the current project submission-ready.
+
 ## Optional Cleanup (Not Mandatory, Helps Coherence)
 
 - Keep `docs/legacy/` as archive-only and clearly mark it non-authoritative
@@ -137,6 +189,13 @@ If you prefer fewer files, consolidate into one:
 - README quality: Needs revision
 - Test evidence quality: Needs concrete artifacts
 - Final defense readiness: Good foundation, not yet final
+
+## Updated Readiness Summary
+
+- Requirements coverage: strong, with a few traceability gaps documented rather than hidden.
+- Source quality: acceptable for submission, with a handful of known risks called out in this audit.
+- Documentation: close to submission-ready once the final consolidation pass is done.
+- Deferred work: DLL runtime loading and installer packaging can be postponed without undermining the defense packet.
 
 ## Fastest Path to Submission-Ready
 
