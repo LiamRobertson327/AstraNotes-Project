@@ -1,4 +1,6 @@
 #include <QtTest>
+#include <vector>
+#include <memory>
 #include "../../src/service/impl/NoteService.h"
 #include "../../src/repository/SqliteNoteRepository.h"
 #include "../../src/model/Note.h"
@@ -31,9 +33,8 @@ private slots:
         // Trashed listing should contain the note
         auto trashed = repo.getTrashedNotes();
         bool found = false;
-        for (auto n : trashed) {
+        for (const auto &n : trashed) {
             if (n->noteId() == nid) found = true;
-            delete n;
         }
         QVERIFY(found);
     }

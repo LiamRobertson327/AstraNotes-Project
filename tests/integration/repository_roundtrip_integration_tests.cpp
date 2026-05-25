@@ -1,6 +1,8 @@
 #include <QtTest>
 #include <QTemporaryDir>
 #include <QDir>
+#include <vector>
+#include <memory>
 
 #include "../../src/model/Note.h"
 #include "../../src/model/Snapshot.h"
@@ -34,12 +36,10 @@ private slots:
         QCOMPARE(repo.countActiveNotesByType("markdown"), 1);
         QCOMPARE(repo.countTitleMatches("Project"), 2);
 
-        QVector<Note*> page = repo.searchByTitlePaged("Project", 10, 0);
+        std::vector<std::unique_ptr<Note>> page = repo.searchByTitlePaged("Project", 10, 0);
         QCOMPARE(page.size(), 2);
         QVERIFY(page[0]->title().contains("Project"));
         QVERIFY(page[1]->title().contains("Project"));
-
-        qDeleteAll(page);
     }
 
     void snapshotRoundTrip_preservesLatestContent() {

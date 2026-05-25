@@ -1,4 +1,6 @@
 #include <QtTest>
+#include <vector>
+#include <memory>
 
 #include "../../src/model/Note.h"
 #include "../../src/repository/INoteRepository.h"
@@ -17,13 +19,13 @@ public:
         if (wrongPassword) *wrongPassword = false;
         return nullptr;
     }
-    QVector<Note*> getAll() override { return {}; }
+    std::vector<std::unique_ptr<Note>> getAll() override { return {}; }
     bool deleteById(qint64 id) override { Q_UNUSED(id); return true; }
     bool update(const Note &note) override { Q_UNUSED(note); return true; }
     QVector<Note*> searchByTitle(const QString &query) override { Q_UNUSED(query); return {}; }
-    QVector<Note*> searchByContent(const QString &query) override { Q_UNUSED(query); return {}; }
-    QVector<Note*> getTrashedNotes() override { return {}; }
-    QVector<Note*> getTrashedNotes(int limit, int offset) override { Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
+    std::vector<std::unique_ptr<Note>> searchByContent(const QString &query) override { Q_UNUSED(query); return {}; }
+    std::vector<std::unique_ptr<Note>> getTrashedNotes() override { return {}; }
+    std::vector<std::unique_ptr<Note>> getTrashedNotes(int limit, int offset) override { Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
     int countTrashedNotes() override { return 0; }
     bool isNoteTrashed(qint64 id) override { Q_UNUSED(id); return false; }
     bool trashNote(qint64 id) override { Q_UNUSED(id); return true; }
@@ -37,7 +39,7 @@ public:
     }
     int countActiveNotes() const override { return 0; }
     int countActiveNotesByType(const QString &typeId) const override { Q_UNUSED(typeId); return 0; }
-    QVector<Note*> searchByTitlePaged(const QString &query, int limit, int offset) override { Q_UNUSED(query); Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
+    std::vector<std::unique_ptr<Note>> searchByTitlePaged(const QString &query, int limit, int offset) override { Q_UNUSED(query); Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
     int countTitleMatches(const QString &query) override { Q_UNUSED(query); return 0; }
     bool isConnected() const override { return true; }
     bool saveSnapshot(class Snapshot &snapshot) override { Q_UNUSED(snapshot); return true; }

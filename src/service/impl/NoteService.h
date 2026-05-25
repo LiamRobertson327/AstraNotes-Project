@@ -3,6 +3,8 @@
 
 #include "../interfaces/INoteService.h"
 #include <QString>
+#include <vector>
+#include <memory>
 
 class Note;
 class INoteRepository;
@@ -28,7 +30,7 @@ public:
     bool isConnected() override;
     int countActiveNotes() override;
     int countActiveNotesByType(const QString &typeId) override;
-    QVector<Note*> searchByTitlePaged(const QString &query, int pageSize, int offset) override;
+    std::vector<std::unique_ptr<Note>> searchByTitlePaged(const QString &query, int pageSize, int offset) override;
 
     bool trashNote(qint64 noteId) override;
 

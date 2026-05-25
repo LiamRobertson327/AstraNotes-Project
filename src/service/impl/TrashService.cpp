@@ -4,6 +4,8 @@
 #include "../../repository/INoteRepository.h"
 
 #include <QDebug>
+#include <memory>
+#include <vector>
 
 TrashService::TrashService(INoteRepository *repository)
     : m_repository(repository) {}
@@ -45,11 +47,13 @@ void TrashService::purgeOldTrashedNotes(int retentionDays) {
     m_repository->purgeTrashedNotes(retentionDays);
 }
 
-QVector<Note *> TrashService::getTrashedNotes(int limit, int offset) {
+std::vector<std::unique_ptr<Note>> TrashService::getTrashedNotes(int limit, int offset) {
     if (!m_repository) {
-        return QVector<Note *>();
+        return {};
     }
 
+    // Forward the RAII-owned vector from the repository directly. This avoids
+    // copying or re-wrapping unique_ptrs and preserves move-only semantics.
     return m_repository->getTrashedNotes(limit, offset);
 }
 

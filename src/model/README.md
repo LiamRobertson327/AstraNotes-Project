@@ -11,6 +11,11 @@ Design and interaction
  - Models are passed between layers: UI receives a `Note` from `INoteService::load()` and renders `Note.content` in an editor. Services orchestrate saves and snapshots using `Note` and `Snapshot` value objects.
  - `typeId` is the connection point between model and plugin architecture: it tells `PluginManager` which plugin can render or provide formatting actions for this note.
 
+Ownership and lifetime
+ - `Note` and `Snapshot` are value-like data models, not owning UI objects. They should be passed by reference or copied as needed.
+ - Legacy repository APIs may still return raw `Note*` / `Snapshot*` pointers; callers own those objects and must delete them after use.
+ - The RAII migration should eventually replace those legacy raw-pointer returns with smart pointers or other explicit ownership types.
+
 Serialization and invariants
  - Models should not embed serialization logic tied to a specific DB (repository handles that). The repository is responsible for mapping `Note` fields to DB columns and handling encryption/decryption of content.
 

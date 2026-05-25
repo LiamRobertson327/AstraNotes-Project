@@ -11,6 +11,7 @@ Files and summary
 Design guidance and interaction
  - Keep these interfaces small and stable. UI code should only depend on these headers; implementation changes should not require UI recompilation.
  - Prefer returning value objects or smart pointers rather than raw pointers to avoid ownership ambiguities.
+ - Where legacy raw pointers remain, document clearly whether the caller or callee owns the object so the eventual RAII migration can be incremental and safe.
 
 Testing
  - Tests should mock these interfaces when verifying controller logic. Integration tests should register the real implementations with a test composition root.

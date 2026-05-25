@@ -64,8 +64,8 @@ int NoteService::countActiveNotesByType(const QString &typeId) {
     return m_repository ? m_repository->countActiveNotesByType(typeId) : 0;
 }
 
-QVector<Note*> NoteService::searchByTitlePaged(const QString &query, int pageSize, int offset) {
-    return m_repository ? m_repository->searchByTitlePaged(query, pageSize, offset) : QVector<Note*>();
+std::vector<std::unique_ptr<Note>> NoteService::searchByTitlePaged(const QString &query, int pageSize, int offset) {
+    return m_repository ? m_repository->searchByTitlePaged(query, pageSize, offset) : std::vector<std::unique_ptr<Note>>();
 }
 
 bool NoteService::trashNote(qint64 noteId) {

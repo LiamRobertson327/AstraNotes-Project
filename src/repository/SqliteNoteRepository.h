@@ -4,6 +4,8 @@
 #include "INoteRepository.h"
 #include "../api/ISnapshot.h"
 #include <QSqlDatabase>
+#include <vector>
+#include <memory>
 
 class Snapshot;
 class Note;
@@ -25,15 +27,15 @@ public:
     // INoteRepository interface implementations
     bool save(Note &note) override;
     Note* getById(qint64 id) override;
-    QVector<Note*> getAll() override;
+    std::vector<std::unique_ptr<Note>> getAll() override;
     bool deleteById(qint64 id) override;
     bool update(const Note &note) override;
     QVector<Note*> searchByTitle(const QString &query) override;
-    QVector<Note*> searchByContent(const QString &query) override;
+    std::vector<std::unique_ptr<Note>> searchByContent(const QString &query) override;
     bool save(Note &note, const QString &password);
     Note* getById(qint64 id, const QString &password, bool *wrongPassword = nullptr);
     // Paged search API for large collections (Phase 6)
-    QVector<Note*> searchByTitlePaged(const QString &query, int limit, int offset);
+    std::vector<std::unique_ptr<Note>> searchByTitlePaged(const QString &query, int limit, int offset);
     int countTitleMatches(const QString &query);
     int countActiveNotes() const;
     int countActiveNotesByType(const QString &typeId) const;
@@ -47,8 +49,8 @@ public:
     bool deleteSnapshotById(qint64 snapshotId);
     bool deleteOldestSnapshotForNote(qint64 noteId);
     // Trash/Retention (Phase 8)
-    QVector<Note*> getTrashedNotes();
-    QVector<Note*> getTrashedNotes(int limit, int offset);
+    std::vector<std::unique_ptr<Note>> getTrashedNotes();
+    std::vector<std::unique_ptr<Note>> getTrashedNotes(int limit, int offset);
     int countTrashedNotes();
     bool isNoteTrashed(qint64 id);
     bool trashNote(qint64 id);

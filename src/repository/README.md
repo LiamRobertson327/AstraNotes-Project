@@ -11,6 +11,11 @@ Design and interaction
  - All SQL logic and transaction handling must remain inside `SqliteNoteRepository`. Services call the repository methods and expect that operations are atomic where documented.
  - The repository is the single source of truth for note content. When a service needs to create a snapshot or change trashed state it calls the repository which enforces referential invariants and updates timestamps.
 
+Ownership and lifetime
+ - Legacy repository methods return raw `Note*` / `Snapshot*` pointers. The caller owns those objects and must delete them after use.
+ - Methods that accept `Note &` or `Snapshot &` do not take ownership; callers retain responsibility for the objects they pass in.
+ - This repository layer is a good candidate for incremental RAII migration, starting with one return path at a time.
+
 Concurrency and testing
  - `SqliteNoteRepository` should use transactions for multi-step updates (save + snapshot) to keep state consistent under concurrent access.
  - For tests, instantiate with the special path `":memory:"` to use an in-memory SQLite DB and to avoid file I/O. Integration tests can optionally use temporary file-backed DBs to assert persistence across process restarts.

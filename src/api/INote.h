@@ -9,6 +9,11 @@ class INote {
 public:
 	virtual ~INote() = default;
 
+	// Ownership / lifetime:
+	// INote is a non-owning interface for value-like note data.
+	// Implementations are responsible for their own internal storage, but
+	// callers do not own or delete INote instances through this interface.
+
 	// Accessors
 	virtual qint64 noteId() const = 0;
 	virtual QString typeId() const = 0;

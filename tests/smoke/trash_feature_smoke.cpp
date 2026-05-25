@@ -1,6 +1,8 @@
 #include <QtTest>
 #include "../../src/repository/SqliteNoteRepository.h"
 #include "../../src/service/impl/NoteService.h"
+#include <vector>
+#include <memory>
 
 class TrashFeatureSmoke : public QObject {
     Q_OBJECT
@@ -31,9 +33,8 @@ private slots:
         // Ensure it's gone from trashed list and active list
         auto trashed = repo.getTrashedNotes();
         bool found = false;
-        for (auto n : trashed) {
+        for (const auto &n : trashed) {
             if (n->noteId() == nid) found = true;
-            delete n;
         }
         QVERIFY(!found);
     }

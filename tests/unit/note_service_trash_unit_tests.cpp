@@ -1,4 +1,6 @@
 #include <QtTest>
+#include <vector>
+#include <memory>
 #include "../../src/service/impl/NoteService.h"
 #include "../../src/repository/INoteRepository.h"
 #include "../../src/model/Note.h"
@@ -12,13 +14,13 @@ public:
     bool save(Note &note) override { Q_UNUSED(note); return true; }
     Note* getById(qint64 id) override { Q_UNUSED(id); return nullptr; }
     Note* getById(qint64 id, const QString &password, bool *wrongPassword = nullptr) override { Q_UNUSED(id); Q_UNUSED(password); if (wrongPassword) *wrongPassword = false; return nullptr; }
-    QVector<Note*> getAll() override { return {}; }
+    std::vector<std::unique_ptr<Note>> getAll() override { return {}; }
     bool deleteById(qint64 id) override { Q_UNUSED(id); return true; }
     bool update(const Note &note) override { Q_UNUSED(note); return true; }
     QVector<Note*> searchByTitle(const QString &query) override { Q_UNUSED(query); return {}; }
-    QVector<Note*> searchByContent(const QString &query) override { Q_UNUSED(query); return {}; }
-    QVector<Note*> getTrashedNotes() override { return {}; }
-    QVector<Note*> getTrashedNotes(int limit, int offset) override { Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
+    std::vector<std::unique_ptr<Note>> searchByContent(const QString &query) override { Q_UNUSED(query); return {}; }
+    std::vector<std::unique_ptr<Note>> getTrashedNotes() override { return {}; }
+    std::vector<std::unique_ptr<Note>> getTrashedNotes(int limit, int offset) override { Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
     int countTrashedNotes() override { return 0; }
     bool isNoteTrashed(qint64 id) override { Q_UNUSED(id); return true; }
     bool trashNote(qint64 id) override { trashCalled = true; lastTrashedId = id; return true; }
@@ -27,7 +29,7 @@ public:
     bool save(Note &note, const QString &password) override { Q_UNUSED(note); Q_UNUSED(password); return true; }
     int countActiveNotes() const override { return 0; }
     int countActiveNotesByType(const QString &typeId) const override { Q_UNUSED(typeId); return 0; }
-    QVector<Note*> searchByTitlePaged(const QString &query, int limit, int offset) override { Q_UNUSED(query); Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
+    std::vector<std::unique_ptr<Note>> searchByTitlePaged(const QString &query, int limit, int offset) override { Q_UNUSED(query); Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
     int countTitleMatches(const QString &query) override { Q_UNUSED(query); return 0; }
     bool isConnected() const override { return true; }
     // Snapshot stubs added to satisfy new INoteRepository methods

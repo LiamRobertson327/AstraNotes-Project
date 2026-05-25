@@ -3,6 +3,8 @@
 
 #include <QString>
 #include <QVector>
+#include <vector>
+#include <memory>
 
 class Note;
 
@@ -40,7 +42,7 @@ public:
     /// Counts and paging helpers used by UI
     virtual int countActiveNotes() = 0;
     virtual int countActiveNotesByType(const QString &typeId) = 0;
-    virtual QVector<Note*> searchByTitlePaged(const QString &query, int pageSize, int offset) = 0;
+    virtual std::vector<std::unique_ptr<Note>> searchByTitlePaged(const QString &query, int pageSize, int offset) = 0;
     virtual bool trashNote(qint64 noteId) = 0;
 
     /// Robust loader that can indicate when password input is needed.
