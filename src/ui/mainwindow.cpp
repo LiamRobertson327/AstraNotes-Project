@@ -80,8 +80,7 @@ void MainWindow::resetEditorToBlankState() {
     }
 
     if (currentNote) {
-        delete currentNote;
-        currentNote = nullptr;
+        currentNote.reset();
     }
 
     sessionPassword.clear();
@@ -488,7 +487,7 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
     }
 
     if (!currentNote) {
-        currentNote = new Note(currentTypeId, title);
+        currentNote = std::make_unique<Note>(currentTypeId, title);
     }
 
     currentNote->setTitle(title);
@@ -511,7 +510,7 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
         saveIndicator->setStyleSheet("color: #4CAF50;");
 
         if (noteListController) {
-            noteListController->noteSaved(currentNote);
+            noteListController->noteSaved(currentNote.get());
         }
 
         if (createSnapshot) {
@@ -670,7 +669,7 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
     bool needsPassword = false;
     bool wrongPassword = false;
     QString loadError;
-    Note *note = noteService ? noteService->loadNoteRobust(noteId, QString(), &needsPassword, &wrongPassword, &loadError) : nullptr;
+    std::unique_ptr<Note> note = noteService ? noteService->loadNoteRobust(noteId, QString(), &needsPassword, &wrongPassword, &loadError) : std::unique_ptr<Note>();
     if (!note) {
         qWarning() << "[MainWindow::loadNoteIntoEditor] Failed to load note with ID:" << noteId << loadError;
         return;
@@ -679,12 +678,10 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
     if (needsPassword) {
         QString enteredPassword;
         if (!promptForPassword("Decrypt Note", QString("Enter the password for '%1':").arg(note->title()), &enteredPassword)) {
-            delete note;
             return;
         }
 
-        Note *decryptedNote = noteService ? noteService->loadNoteRobust(noteId, enteredPassword, nullptr, &wrongPassword, &loadError) : nullptr;
-        delete note;
+        std::unique_ptr<Note> decryptedNote = noteService ? noteService->loadNoteRobust(noteId, enteredPassword, nullptr, &wrongPassword, &loadError) : std::unique_ptr<Note>();
         if (!decryptedNote) {
             if (wrongPassword) {
                 QMessageBox::warning(this, "Incorrect Password", "The password you entered could not decrypt this note.");
@@ -696,31 +693,28 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
         }
 
         sessionPassword = enteredPassword;
-        note = decryptedNote;
+        note = std::move(decryptedNote);
     } else {
         sessionPassword.clear();
     }
     
     // Update current note
-    if (currentNote) {
-        delete currentNote;
-    }
-    currentNote = note;
+    currentNote = std::move(note);
     isLoadingDocument = true;
     
     // Populate UI with note data
-    titleBar->setText(note->title());
-    writeEditor->setText(note->content());
-    readViewer->setText(note->content());
-    splitEditor->setText(note->content());
+    titleBar->setText(currentNote->title());
+    writeEditor->setText(currentNote->content());
+    readViewer->setText(currentNote->content());
+    splitEditor->setText(currentNote->content());
     if (secureToggle) {
         secureToggle->blockSignals(true);
-        secureToggle->setChecked(note->isSecured());
+        secureToggle->setChecked(currentNote->isSecured());
         secureToggle->blockSignals(false);
     }
 
     // Set the note type to show/hide appropriate buttons
-    setNoteType(note->typeId());
+    setNoteType(currentNote->typeId());
     updateEditorCounters();
     
     // Clear unsaved indicator
@@ -748,14 +742,13 @@ void MainWindow::createNewNote(const QString &typeId) {
         if (currentNote->noteId() > 0) {
             createSnapshotForCurrentNote();
         }
-        delete currentNote;
     }
     
     // Create a new note with the selected type via NoteService
     if (noteService) {
         currentNote = noteService->createNote(typeId, "");
     } else {
-        currentNote = new Note(typeId, "");
+        currentNote = std::make_unique<Note>(typeId, "");
     }
     sessionPassword.clear();
     isLoadingDocument = true;
@@ -1365,7 +1358,7 @@ MainWindow::~MainWindow() {
         delete noteRepository;
     }
     if (currentNote) {
-        delete currentNote;
+        currentNote.reset();
     }
 }
 
@@ -1630,12 +1623,10 @@ void MainWindow::showTrashDialog() {
         updateSystemInfoDisplay();
         if (currentNote && currentNote->noteId() > 0) {
             // If current note was restored/purged, reload
-            Note *reloaded = noteService ? noteService->loadNote(currentNote->noteId()) : nullptr;
+            std::unique_ptr<Note> reloaded = noteService ? noteService->loadNote(currentNote->noteId()) : std::unique_ptr<Note>();
             if (!reloaded) {
                 // Note may have been purged; reset the editor to the default blank state
                 resetEditorToBlankState();
-            } else {
-                delete reloaded; // keep current in-memory until user reloads
             }
         }
     });

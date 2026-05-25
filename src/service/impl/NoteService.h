@@ -20,11 +20,11 @@ public:
     explicit NoteService(INoteRepository *repository);
 
     // INoteService implementation
-    Note *loadNote(qint64 noteId, const QString &password = QString(),
-                   bool *wrongPassword = nullptr, QString *errorMessage = nullptr) override;
+    std::unique_ptr<Note> loadNote(qint64 noteId, const QString &password = QString(),
+                                   bool *wrongPassword = nullptr, QString *errorMessage = nullptr) override;
     bool saveNote(Note &note, const QString &password,
                   QString *errorMessage = nullptr) override;
-    Note *createNote(const QString &typeId, const QString &title) override;
+    std::unique_ptr<Note> createNote(const QString &typeId, const QString &title) override;
 
     // Storage helpers for UI
     bool isConnected() override;
@@ -35,8 +35,8 @@ public:
     bool trashNote(qint64 noteId) override;
 
     // Robust loader: indicates when a password is required without performing UI prompts.
-    Note *loadNoteRobust(qint64 noteId, const QString &password, bool *needsPassword = nullptr,
-                         bool *wrongPassword = nullptr, QString *errorMessage = nullptr) override;
+    std::unique_ptr<Note> loadNoteRobust(qint64 noteId, const QString &password, bool *needsPassword = nullptr,
+                                         bool *wrongPassword = nullptr, QString *errorMessage = nullptr) override;
 
 private:
     INoteRepository *m_repository;

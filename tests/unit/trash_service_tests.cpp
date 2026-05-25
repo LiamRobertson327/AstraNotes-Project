@@ -32,7 +32,7 @@ private slots:
         // Trash again and purge
         QVERIFY(svc.trashNote(nid));
         QVERIFY(svc.purgeNote(nid));
-        Note* after = repo.getById(nid);
+        std::unique_ptr<Note> after = repo.getById(nid);
         QVERIFY(after == nullptr);
     }
 };

@@ -16,8 +16,8 @@ public:
     qint64 lastTrashedId = -1;
 
     bool save(Note &note) override { Q_UNUSED(note); return true; }
-    Note* getById(qint64 id) override { Q_UNUSED(id); return nullptr; }
-    Note* getById(qint64 id, const QString &password, bool *wrongPassword = nullptr) override { Q_UNUSED(id); Q_UNUSED(password); if (wrongPassword) *wrongPassword = false; return nullptr; }
+    std::unique_ptr<Note> getById(qint64 id) override { Q_UNUSED(id); return {}; }
+    std::unique_ptr<Note> getById(qint64 id, const QString &password, bool *wrongPassword = nullptr) override { Q_UNUSED(id); Q_UNUSED(password); if (wrongPassword) *wrongPassword = false; return {}; }
     std::vector<std::unique_ptr<Note>> getAll() override { return {}; }
     bool deleteById(qint64 id) override { Q_UNUSED(id); return true; }
     bool update(const Note &note) override { Q_UNUSED(note); return true; }

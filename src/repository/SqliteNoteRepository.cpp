@@ -274,7 +274,7 @@ bool SqliteNoteRepository::save(Note &note, const QString &password) {
     return true;
 }
 
-Note* SqliteNoteRepository::getById(qint64 id) {
+std::unique_ptr<Note> SqliteNoteRepository::getById(qint64 id) {
     QSqlQuery query(db);
     query.prepare(R"(
         SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at
@@ -293,7 +293,7 @@ Note* SqliteNoteRepository::getById(qint64 id) {
         return nullptr;
     }
 
-    Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+    auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
     note->setNoteId(query.value("id").toLongLong());
     note->setCreatedAt(toUtcDateTime(query.value("created_at")));
     note->setLastModified(toUtcDateTime(query.value("modified_at")));
@@ -305,7 +305,7 @@ Note* SqliteNoteRepository::getById(qint64 id) {
     return note;
 }
 
-Note* SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wrongPassword) {
+std::unique_ptr<Note> SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wrongPassword) {
     if (wrongPassword) {
         *wrongPassword = false;
     }
@@ -328,7 +328,7 @@ Note* SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wr
         return nullptr;
     }
 
-    Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+    auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
     note->setNoteId(query.value("id").toLongLong());
     note->setCreatedAt(toUtcDateTime(query.value("created_at")));
     note->setLastModified(toUtcDateTime(query.value("modified_at")));
@@ -355,7 +355,6 @@ Note* SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wr
 
     if (!result.success) {
         qWarning() << "[SqliteNoteRepository::getById] Decryption failed for note ID:" << id << result.errorMessage;
-        delete note;
         if (wrongPassword) {
             *wrongPassword = true;
         }

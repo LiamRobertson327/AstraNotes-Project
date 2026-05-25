@@ -30,11 +30,11 @@ public:
     virtual bool save(Note &note) = 0;
 
     // getById(): Retrieve a note by primary key. Returns nullptr if not found.
-    //            Caller assumes ownership; must delete the returned Note*.
-    virtual Note* getById(qint64 id) = 0;
+    //            Caller receives a move-owned `unique_ptr<Note>`.
+    virtual std::unique_ptr<Note> getById(qint64 id) = 0;
     // Overload for encrypted notes: attempt to decrypt using `password`.
     // If the password is wrong and `wrongPassword` is provided, set it to true.
-    virtual Note* getById(qint64 id, const QString &password, bool *wrongPassword = nullptr) = 0;
+    virtual std::unique_ptr<Note> getById(qint64 id, const QString &password, bool *wrongPassword = nullptr) = 0;
 
     // getAll(): Retrieve all notes, ordered by most recently modified first.
     //           Returns empty vector if none exist or on error.

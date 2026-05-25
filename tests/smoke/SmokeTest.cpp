@@ -52,11 +52,10 @@ void SmokeTest::testRepositorySaveLoad()
     qint64 id = n.noteId();
     QVERIFY(id > 0);
 
-    Note* loaded = repo.getById(id);
+    std::unique_ptr<Note> loaded = repo.getById(id);
     QVERIFY(loaded != nullptr);
     QCOMPARE(loaded->title(), n.title());
     QCOMPARE(loaded->content(), n.content());
-    delete loaded;
 }
 
 void SmokeTest::testSnapshotAndTrash()

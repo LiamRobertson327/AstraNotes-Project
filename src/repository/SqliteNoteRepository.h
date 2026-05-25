@@ -26,14 +26,14 @@ public:
 
     // INoteRepository interface implementations
     bool save(Note &note) override;
-    Note* getById(qint64 id) override;
+    std::unique_ptr<Note> getById(qint64 id) override;
     std::vector<std::unique_ptr<Note>> getAll() override;
     bool deleteById(qint64 id) override;
     bool update(const Note &note) override;
     std::vector<std::unique_ptr<Note>> searchByTitle(const QString &query) override;
     std::vector<std::unique_ptr<Note>> searchByContent(const QString &query) override;
     bool save(Note &note, const QString &password);
-    Note* getById(qint64 id, const QString &password, bool *wrongPassword = nullptr);
+    std::unique_ptr<Note> getById(qint64 id, const QString &password, bool *wrongPassword = nullptr);
     // Paged search API for large collections (Phase 6)
     std::vector<std::unique_ptr<Note>> searchByTitlePaged(const QString &query, int limit, int offset);
     int countTitleMatches(const QString &query);
