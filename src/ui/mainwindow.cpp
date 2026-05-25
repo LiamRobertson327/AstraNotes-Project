@@ -38,6 +38,13 @@
 #include "AuditLogPanel.h"
 #include "../logging/AuditLogger.h"
 
+namespace {
+QString formatContentMegabytes(qint64 bytes) {
+    const double megabytes = static_cast<double>(bytes) / (1024.0 * 1024.0);
+    return QString::number(megabytes, 'f', 2) + "MB";
+}
+} // namespace
+
 QTextEdit *MainWindow::activeSearchEditor() const {
     if (!viewStack) {
         return nullptr;
@@ -111,6 +118,7 @@ void MainWindow::resetEditorToBlankState() {
 
     setUnsavedChanges(false);
     updateMetadataDisplay();
+    updateEditorCounters();
     updateSearchState(searchBar ? searchBar->text() : QString());
     isLoadingDocument = false;
 }
@@ -121,11 +129,33 @@ void MainWindow::applySearchHighlight() {
         return;
     }
 
+    QTextDocument *document = editor->document();
+    if (!document) {
+        return;
+    }
+
+    const int documentLength = document->characterCount();
+    auto isValidMatch = [documentLength](const QPair<int, int> &match) {
+        if (match.first < 0 || match.second <= 0) {
+            return false;
+        }
+
+        if (match.first >= documentLength) {
+            return false;
+        }
+
+        return match.first + match.second <= documentLength;
+    };
+
     QList<QTextEdit::ExtraSelection> selections;
     for (int i = 0; i < currentSearchMatches.size(); ++i) {
         const QPair<int, int> &match = currentSearchMatches.at(i);
+        if (!isValidMatch(match)) {
+            continue;
+        }
+
         QTextEdit::ExtraSelection selection;
-        QTextCursor cursor(editor->document());
+        QTextCursor cursor(document);
         cursor.setPosition(match.first);
         cursor.setPosition(match.first + match.second, QTextCursor::KeepAnchor);
         selection.cursor = cursor;
@@ -137,8 +167,13 @@ void MainWindow::applySearchHighlight() {
 
     if (currentSearchMatchIndex >= 0 && currentSearchMatchIndex < currentSearchMatches.size()) {
         const QPair<int, int> &match = currentSearchMatches.at(currentSearchMatchIndex);
+        if (!isValidMatch(match)) {
+            editor->setExtraSelections(selections);
+            return;
+        }
+
         QTextEdit::ExtraSelection currentSelection;
-        QTextCursor cursor(editor->document());
+        QTextCursor cursor(document);
         cursor.setPosition(match.first);
         cursor.setPosition(match.first + match.second, QTextCursor::KeepAnchor);
         currentSelection.cursor = cursor;
@@ -189,6 +224,27 @@ void MainWindow::updateMetadataDisplay() {
     const QString formatId = currentNote->typeId().isEmpty() ? "unknown" : currentNote->typeId();
 
     metadataLabel->setText(QString("Created: %1 | Modified: %2 | Format: %3").arg(created, modified, formatId));
+}
+
+void MainWindow::updateEditorCounters() {
+    if (titleCounterLabel) {
+        const int titleLength = titleBar ? titleBar->text().size() : 0;
+        titleCounterLabel->setText(QString("Title: %1/%2").arg(titleLength).arg(NoteService::kMaxTitleCharacters));
+        titleCounterLabel->setToolTip(QString("Title length: %1 of %2 characters").arg(titleLength).arg(NoteService::kMaxTitleCharacters));
+    }
+
+    if (contentCounterLabel) {
+        const qint64 contentBytes = writeEditor ? writeEditor->toPlainText().toUtf8().size() : 0;
+        contentCounterLabel->setText(QString("Note: %1/%2").arg(formatContentMegabytes(contentBytes), QString("10MB")));
+        contentCounterLabel->setToolTip(QString("Content size: %1 of 10 MB").arg(formatContentMegabytes(contentBytes)));
+    }
+
+    if (contentPercentLabel) {
+        const qint64 contentBytes = writeEditor ? writeEditor->toPlainText().toUtf8().size() : 0;
+        const double percent = (static_cast<double>(contentBytes) / static_cast<double>(NoteService::kMaxContentBytes)) * 100.0;
+        contentPercentLabel->setText(QString("(%1%)").arg(QString::number(percent, 'f', 1)));
+        contentPercentLabel->setToolTip(QString("Content usage: %1 of the maximum limit").arg(QString::number(percent, 'f', 1)));
+    }
 }
 
 void MainWindow::updateSystemInfoDisplay() {
@@ -410,12 +466,33 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
         return false;
     }
 
+    const QString bodyText = writeEditor ? writeEditor->toPlainText() : QString();
+    auto reportValidationError = [this, createSnapshot](const QString &message) {
+        qWarning() << "[MainWindow::saveCurrentNote]" << message;
+        saveIndicator->setText("● Error: " + message);
+        saveIndicator->setStyleSheet("color: #F44336;");
+
+        if (createSnapshot) {
+            QMessageBox::warning(this, "Save Failed", message);
+        }
+    };
+
+    if (title.size() > NoteService::kMaxTitleCharacters) {
+        reportValidationError(QString("Title exceeds the maximum of %1 characters").arg(NoteService::kMaxTitleCharacters));
+        return false;
+    }
+
+    if (bodyText.toUtf8().size() > NoteService::kMaxContentBytes) {
+        reportValidationError(QString("Content exceeds the maximum of %1 bytes").arg(NoteService::kMaxContentBytes));
+        return false;
+    }
+
     if (!currentNote) {
         currentNote = new Note(currentTypeId, title);
     }
 
     currentNote->setTitle(title);
-    currentNote->setContent(writeEditor->toPlainText());
+    currentNote->setContent(bodyText);
     currentNote->setSecured(secureToggle && secureToggle->isChecked());
 
     const bool hasEncryptedState = !currentNote->encryptionSalt().isEmpty();
@@ -456,8 +533,10 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
 
     if (!saveError.isEmpty()) {
         qWarning() << "[MainWindow::saveCurrentNote]" << saveError;
+        saveIndicator->setText("● Error: " + saveError);
+    } else {
+        saveIndicator->setText("● Error: Save failed");
     }
-    saveIndicator->setText("● Error: Save failed");
     saveIndicator->setStyleSheet("color: #F44336;");
     return false;
 }
@@ -642,6 +721,7 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
 
     // Set the note type to show/hide appropriate buttons
     setNoteType(note->typeId());
+    updateEditorCounters();
     
     // Clear unsaved indicator
     saveIndicator->setText("● Saved");
@@ -697,6 +777,7 @@ void MainWindow::createNewNote(const QString &typeId) {
     
     // Set the note type to show/hide appropriate buttons and populate toolbar
     setNoteType(typeId);
+    updateEditorCounters();
     updateMetadataDisplay();
     
     // Reset the save indicator
@@ -886,13 +967,44 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     titleBar = new QLineEdit();
     titleBar->setObjectName("titleBar");
     titleBar->setPlaceholderText("Enter Note Title...");
+    titleBar->setMaxLength(NoteService::kMaxTitleCharacters);
     titleBar->setFixedHeight(60);
     editorBoxLayout->addWidget(titleBar);
+
+    QHBoxLayout *metadataRowLayout = new QHBoxLayout();
+    metadataRowLayout->setContentsMargins(0, 0, 0, 0);
+    metadataRowLayout->setSpacing(10);
 
     metadataLabel = new QLabel("No note selected");
     metadataLabel->setObjectName("metadataLabel");
     metadataLabel->setWordWrap(true);
-    editorBoxLayout->addWidget(metadataLabel);
+    metadataRowLayout->addWidget(metadataLabel, 1);
+
+    titleCounterLabel = new QLabel(QString("Title: 0/%1").arg(NoteService::kMaxTitleCharacters));
+    titleCounterLabel->setObjectName("titleCounterLabel");
+    titleCounterLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    titleCounterLabel->setMinimumWidth(110);
+    titleCounterLabel->setToolTip("Current title length vs limit");
+    titleCounterLabel->setStyleSheet("font-weight: bold; color: #8E24AA;");
+    metadataRowLayout->addWidget(titleCounterLabel);
+
+    contentCounterLabel = new QLabel("Note: 0.00MB/10MB");
+    contentCounterLabel->setObjectName("contentCounterLabel");
+    contentCounterLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    contentCounterLabel->setMinimumWidth(130);
+    contentCounterLabel->setToolTip("Current content size vs 10 MB limit");
+    contentCounterLabel->setStyleSheet("font-weight: bold; color: #00695C;");
+    metadataRowLayout->addWidget(contentCounterLabel);
+
+    contentPercentLabel = new QLabel("(0.0%)");
+    contentPercentLabel->setObjectName("contentPercentLabel");
+    contentPercentLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    contentPercentLabel->setMinimumWidth(70);
+    contentPercentLabel->setToolTip("Content usage percentage");
+    contentPercentLabel->setStyleSheet("font-weight: bold; color: #00695C;");
+    metadataRowLayout->addWidget(contentPercentLabel);
+
+    editorBoxLayout->addLayout(metadataRowLayout);
     
     // Phase 3: Add formatting toolbar (initially empty, will populate when note is loaded)
     formattingToolbar = new QToolBar("Formatting");
@@ -1031,6 +1143,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(titleBar, &QLineEdit::textChanged, [this](const QString &){
         if (!isLoadingDocument) {
             setUnsavedChanges(true);
+            updateEditorCounters();
             // Reset auto-save timer on keystroke (500ms debounce)
             if (autoSaveEnabled) {
                 autoSaveTimer->stop();
@@ -1042,6 +1155,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(writeEditor, &QTextEdit::textChanged, [this](){
         if (!isLoadingDocument) {
             setUnsavedChanges(true);
+            updateEditorCounters();
             updateSearchState(currentSearchQuery);
             // Reset auto-save timer on keystroke (500ms debounce)
             if (autoSaveEnabled) {
@@ -1057,6 +1171,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         writeEditor->setPlainText(splitEditor->toPlainText());
         if (!isLoadingDocument) {
             setUnsavedChanges(true);
+            updateEditorCounters();
             updateSearchState(currentSearchQuery);
             // Reset auto-save timer on keystroke (500ms debounce)
             if (autoSaveEnabled) {
@@ -1167,6 +1282,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
             return;
         }
 
+        qint64 currentNoteId = currentNote ? currentNote->noteId() : -1;
+        bool deletedCurrentNote = false;
+        for (QListWidgetItem *item : items) {
+            if (!item) {
+                continue;
+            }
+
+            const qint64 noteId = item->data(Qt::UserRole).toLongLong();
+            if (noteId == currentNoteId) {
+                deletedCurrentNote = true;
+            }
+        }
+
         int ret = QMessageBox::question(this, "Confirm Delete", QString("Move %1 selected note(s) to Trash?").arg(items.size()));
         if (ret != QMessageBox::Yes) {
             return;
@@ -1178,15 +1306,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
         // Refresh UI after controller did the work
         updateSystemInfoDisplay();
-        bool deletedCurrentNote = false;
-        if (currentNote && currentNote->noteId() > 0) {
-            for (QListWidgetItem *item : items) {
-                if (item && item->data(Qt::UserRole).toLongLong() == currentNote->noteId()) {
-                    deletedCurrentNote = true;
-                    break;
-                }
-            }
-        }
 
         if (deletedCurrentNote) {
             resetEditorToBlankState();

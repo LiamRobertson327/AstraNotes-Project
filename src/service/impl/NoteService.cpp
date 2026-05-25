@@ -24,6 +24,20 @@ bool NoteService::saveNote(Note &note, const QString &password, QString *errorMe
         return false;
     }
 
+    if (note.title().size() > kMaxTitleCharacters) {
+        if (errorMessage) {
+            *errorMessage = QString("Title exceeds the maximum of %1 characters").arg(kMaxTitleCharacters);
+        }
+        return false;
+    }
+
+    if (note.content().toUtf8().size() > kMaxContentBytes) {
+        if (errorMessage) {
+            *errorMessage = QString("Content exceeds the maximum of %1 bytes").arg(kMaxContentBytes);
+        }
+        return false;
+    }
+
     if (!m_repository->save(note, note.isSecured() ? password : QString())) {
         if (errorMessage) {
             *errorMessage = "Failed to save note";

@@ -12,6 +12,9 @@ class INoteRepository;
 /// SnapshotService and TrashService respectively.
 class NoteService : public INoteService {
 public:
+    static constexpr int kMaxTitleCharacters = 500;
+    static constexpr qint64 kMaxContentBytes = 10LL * 1024 * 1024;
+
     explicit NoteService(INoteRepository *repository);
 
     // INoteService implementation

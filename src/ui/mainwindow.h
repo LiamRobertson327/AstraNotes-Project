@@ -75,7 +75,10 @@ private:
 
     // --- Right Editor Area ---
     QLineEdit *titleBar;
+    QLabel *titleCounterLabel;
     QLabel *metadataLabel;
+    QLabel *contentCounterLabel;
+    QLabel *contentPercentLabel;
     QToolBar *formattingToolbar;
     
         // Current note and type state (Phase 1)
@@ -125,6 +128,7 @@ private:
     void navigateSearchMatch(int direction);
     void applySearchHighlight();
     void updateMetadataDisplay();
+    void updateEditorCounters();
     void updateSystemInfoDisplay();
     bool promptForSessionPassword();
     bool promptForPassword(const QString &title, const QString &label, QString *password);
