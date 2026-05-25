@@ -1480,9 +1480,9 @@ void MainWindow::showSnapshotHistoryDialog() {
 
     qDebug() << "[MainWindow::showSnapshotHistoryDialog] Showing snapshot history for note ID:" << currentNote->noteId();
 
-    QVector<Snapshot*> snapshots = snapshotService ? snapshotService->getSnapshotsByNoteId(currentNote->noteId()) : QVector<Snapshot*>();
+    auto snapshots = snapshotService ? snapshotService->getSnapshotsByNoteId(currentNote->noteId()) : std::vector<std::unique_ptr<Snapshot>>();
 
-    if (snapshots.isEmpty()) {
+    if (snapshots.empty()) {
         QMessageBox::information(this, "Snapshot History", "No snapshots yet for this note.");
         return;
     }
@@ -1498,7 +1498,8 @@ void MainWindow::showSnapshotHistoryDialog() {
     // Create a list widget to show snapshots
     QListWidget *snapshotList = new QListWidget();
 
-    for (Snapshot *snapshot : snapshots) {
+    for (const auto &snapshotPtr : snapshots) {
+        Snapshot *snapshot = snapshotPtr.get();
         QListWidgetItem *item = new QListWidgetItem(snapshot->displayText());
         item->setData(Qt::UserRole, snapshot->snapshotId());
         snapshotList->addItem(item);
@@ -1555,10 +1556,7 @@ void MainWindow::showSnapshotHistoryDialog() {
 
     dialog->exec();
 
-    // Clean up
-    for (Snapshot *snap : snapshots) {
-        delete snap;
-    }
+    // Clean up: unique_ptrs will automatically free snapshots.
     delete dialog;
 }
 
@@ -1572,7 +1570,7 @@ void MainWindow::onRevertToSnapshot(qint64 snapshotId) {
 
     qDebug() << "[MainWindow::onRevertToSnapshot] Reverting to snapshot ID:" << snapshotId;
     QString revertError;
-    Snapshot *restored = snapshotService->revertToSnapshot(*currentNote, snapshotId, sessionPassword, &revertError);
+    auto restored = snapshotService->revertToSnapshot(*currentNote, snapshotId, sessionPassword, &revertError);
     if (!restored) {
         if (revertError == "Incorrect password for snapshot") {
             QString enteredPassword;
@@ -1614,7 +1612,7 @@ void MainWindow::onRevertToSnapshot(qint64 snapshotId) {
 
     qDebug() << "[MainWindow::onRevertToSnapshot] Reverted to snapshot ID:" << snapshotId;
 
-    delete restored;
+    // restored is a unique_ptr and will be cleaned up automatically
 
     QMessageBox::information(this, "Snapshot Restored", "Note reverted to selected snapshot. Review and save to confirm.");
 }

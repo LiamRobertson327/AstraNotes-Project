@@ -42,10 +42,10 @@ public:
     // Snapshot methods (Phase 6: FR8)
     bool saveSnapshot(Snapshot &snapshot);
     bool saveSnapshot(Snapshot &snapshot, const QString &password);
-    QVector<Snapshot*> getSnapshotsByNoteId(qint64 noteId);
-    QVector<Snapshot*> getSnapshotsByNoteId(qint64 noteId, const QString &password);
-    Snapshot* getSnapshotById(qint64 snapshotId);  // Fetch single snapshot by ID
-    Snapshot* getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword = nullptr);
+    std::vector<std::unique_ptr<Snapshot>> getSnapshotsByNoteId(qint64 noteId);
+    std::vector<std::unique_ptr<Snapshot>> getSnapshotsByNoteId(qint64 noteId, const QString &password);
+    std::unique_ptr<Snapshot> getSnapshotById(qint64 snapshotId);  // Fetch single snapshot by ID
+    std::unique_ptr<Snapshot> getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword = nullptr);
     bool deleteSnapshotById(qint64 snapshotId);
     bool deleteOldestSnapshotForNote(qint64 noteId);
     // Trash/Retention (Phase 8)

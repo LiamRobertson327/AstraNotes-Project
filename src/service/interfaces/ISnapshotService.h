@@ -2,7 +2,8 @@
 #define ISNAPSHOTSERVICE_H
 
 #include <QString>
-#include <QVector>
+#include <memory>
+#include <vector>
 
 class Note;
 class Snapshot;
@@ -22,16 +23,16 @@ public:
                               QString *errorMessage = nullptr) = 0;
 
     /// Retrieve all snapshots for a given note, ordered by creation date (newest first).
-    /// Caller owns the returned Snapshot objects.
+    /// Returns move-owned `unique_ptr<Snapshot>` instances in a std::vector.
     /// @param noteId         Note ID to fetch snapshots for
-    virtual QVector<Snapshot *> getSnapshotsByNoteId(qint64 noteId) = 0;
+    virtual std::vector<std::unique_ptr<Snapshot>> getSnapshotsByNoteId(qint64 noteId) = 0;
 
-    /// Get a specific snapshot by ID. Caller owns the returned Snapshot.
+    /// Get a specific snapshot by ID. Returns a move-owned `unique_ptr<Snapshot>`.
     /// @param snapshotId     Snapshot ID to fetch
     /// @param password       Password to decrypt if the snapshot is encrypted
     /// @param wrongPassword  Set to true if decryption failed due to wrong password
-    virtual Snapshot *getSnapshotById(qint64 snapshotId, const QString &password = QString(),
-                                      bool *wrongPassword = nullptr) = 0;
+    virtual std::unique_ptr<Snapshot> getSnapshotById(qint64 snapshotId, const QString &password = QString(),
+                                                     bool *wrongPassword = nullptr) = 0;
 
     /// Delete a snapshot by ID.
     /// @param snapshotId     Snapshot ID to delete
@@ -47,10 +48,10 @@ public:
     virtual void enforceSnapshotLimit(qint64 noteId, int maxSnapshots = 2) = 0;
 
     /// Revert workflow: save a safety snapshot then load and return target snapshot.
-    /// Returns a newly allocated Snapshot* (caller owns) or nullptr on error.
-    virtual Snapshot *revertToSnapshot(Note &currentNote, qint64 snapshotId,
-                                       const QString &password = QString(),
-                                       QString *errorMessage = nullptr) = 0;
+    /// Returns a move-owned `unique_ptr<Snapshot>` or nullptr on error.
+    virtual std::unique_ptr<Snapshot> revertToSnapshot(Note &currentNote, qint64 snapshotId,
+                                                       const QString &password = QString(),
+                                                       QString *errorMessage = nullptr) = 0;
 };
 
 #endif // ISNAPSHOTSERVICE_H

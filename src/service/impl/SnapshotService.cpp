@@ -46,14 +46,14 @@ bool SnapshotService::saveSnapshot(const Note &note, const QString &password, QS
     return saved;
 }
 
-QVector<Snapshot *> SnapshotService::getSnapshotsByNoteId(qint64 noteId) {
+std::vector<std::unique_ptr<Snapshot>> SnapshotService::getSnapshotsByNoteId(qint64 noteId) {
     if (!m_repository) {
-        return QVector<Snapshot *>();
+        return {};
     }
     return m_repository->getSnapshotsByNoteId(noteId);
 }
 
-Snapshot *SnapshotService::getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword) {
+std::unique_ptr<Snapshot> SnapshotService::getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword) {
     if (!m_repository) {
         return nullptr;
     }
@@ -81,7 +81,7 @@ void SnapshotService::enforceSnapshotLimit(qint64 noteId, int maxSnapshots) {
     m_repository->pruneOldSnapshots(noteId);
 }
 
-Snapshot *SnapshotService::revertToSnapshot(Note &currentNote, qint64 snapshotId, const QString &password, QString *errorMessage) {
+std::unique_ptr<Snapshot> SnapshotService::revertToSnapshot(Note &currentNote, qint64 snapshotId, const QString &password, QString *errorMessage) {
     if (!m_repository) {
         if (errorMessage) *errorMessage = "Repository unavailable";
         return nullptr;
@@ -91,7 +91,7 @@ Snapshot *SnapshotService::revertToSnapshot(Note &currentNote, qint64 snapshotId
     // The repository prunes older snapshots when a new one is saved, so saving
     // the safety snapshot first can delete the very snapshot we are trying to restore.
     bool wrongPassword = false;
-    Snapshot *target = m_repository->getSnapshotById(snapshotId, password, &wrongPassword);
+    std::unique_ptr<Snapshot> target = m_repository->getSnapshotById(snapshotId, password, &wrongPassword);
     if (!target) {
         if (wrongPassword) {
             if (errorMessage) *errorMessage = "Incorrect password for snapshot";

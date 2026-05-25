@@ -65,10 +65,10 @@ public:
     // Snapshot methods (Phase 6: FR8)
     virtual bool saveSnapshot(class Snapshot &snapshot) = 0;
     virtual bool saveSnapshot(class Snapshot &snapshot, const QString &password) = 0;
-    virtual QVector<class Snapshot*> getSnapshotsByNoteId(qint64 noteId) = 0;
-    virtual QVector<class Snapshot*> getSnapshotsByNoteId(qint64 noteId, const QString &password) = 0;
-    virtual class Snapshot* getSnapshotById(qint64 snapshotId) = 0;
-    virtual class Snapshot* getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword = nullptr) = 0;
+    virtual std::vector<std::unique_ptr<class Snapshot>> getSnapshotsByNoteId(qint64 noteId) = 0;
+    virtual std::vector<std::unique_ptr<class Snapshot>> getSnapshotsByNoteId(qint64 noteId, const QString &password) = 0;
+    virtual std::unique_ptr<class Snapshot> getSnapshotById(qint64 snapshotId) = 0;
+    virtual std::unique_ptr<class Snapshot> getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword = nullptr) = 0;
     virtual bool deleteSnapshotById(qint64 snapshotId) = 0;
     virtual bool deleteOldestSnapshotForNote(qint64 noteId) = 0;
     virtual bool pruneOldSnapshots(qint64 noteId) = 0;

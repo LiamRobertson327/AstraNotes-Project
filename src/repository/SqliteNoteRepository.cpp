@@ -870,13 +870,13 @@ bool SqliteNoteRepository::saveSnapshot(Snapshot &snapshot, const QString &passw
     return false;
 }
 
-QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
+std::vector<std::unique_ptr<Snapshot>> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
     // Retrieve all snapshots for a given note, ordered by creation time descending (newest first).
     // Used by the snapshot list UI.
     // Caller assumes ownership of all Snapshot* pointers; must delete them.
     qDebug() << "[SqliteNoteRepository::getSnapshotsByNoteId] Fetching snapshots for note ID:" << noteId;
     
-    QVector<Snapshot*> snapshots;
+    std::vector<std::unique_ptr<Snapshot>> snapshots;
     QSqlQuery query(db);
     query.prepare("SELECT id, note_id, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at FROM snapshots WHERE note_id = :note_id ORDER BY created_at DESC");
     query.addBindValue(noteId);
@@ -887,7 +887,7 @@ QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
     }
     
     while (query.next()) {
-        Snapshot *snapshot = new Snapshot(
+        auto snapshot = std::make_unique<Snapshot>(
             query.value("note_id").toLongLong(),
             query.value("title").toString(),
             query.value("content").toString()
@@ -898,14 +898,14 @@ QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
         snapshot->setEncryptionSalt(query.value("encryption_salt").toString());
         snapshot->setEncryptionIv(query.value("encryption_iv").toString());
         snapshot->setEncryptionTag(query.value("encryption_tag").toString());
-        snapshots.append(snapshot);
+        snapshots.push_back(std::move(snapshot));
     }
     
     qDebug() << "[SqliteNoteRepository::getSnapshotsByNoteId] Fetched" << snapshots.size() << "snapshots for note ID:" << noteId;
     return snapshots;
 }
 
-QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId, const QString &password) {
+std::vector<std::unique_ptr<Snapshot>> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId, const QString &password) {
     Q_UNUSED(password);
     // For listing purposes we return the same metadata list; decryption is handled by getSnapshotById when needed.
     return getSnapshotsByNoteId(noteId);
@@ -929,7 +929,7 @@ bool SqliteNoteRepository::deleteSnapshotById(qint64 snapshotId) {
     return true;
 }
 
-Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
+std::unique_ptr<Snapshot> SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
     QSqlQuery query(db);
     query.prepare("SELECT id, note_id, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at FROM snapshots WHERE id = :id");
     query.bindValue(":id", snapshotId);
@@ -944,7 +944,7 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
         return nullptr;
     }
 
-    Snapshot *snapshot = new Snapshot(
+    auto snapshot = std::make_unique<Snapshot>(
         query.value("note_id").toLongLong(),
         query.value("title").toString(),
         query.value("content").toString()
@@ -958,7 +958,7 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
     return snapshot;
 }
 
-Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword) {
+std::unique_ptr<Snapshot> SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword) {
     if (wrongPassword) {
         *wrongPassword = false;
     }
@@ -979,7 +979,7 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString
         return nullptr;
     }
 
-    Snapshot *snapshot = new Snapshot(
+    auto snapshot = std::make_unique<Snapshot>(
         query.value("note_id").toLongLong(),
         query.value("title").toString(),
         query.value("content").toString()
@@ -1005,7 +1005,6 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString
 
     if (!result.success) {
         qWarning() << "[SqliteNoteRepository::getSnapshotById] Decryption failed for snapshot ID:" << snapshotId << result.errorMessage;
-        delete snapshot;
         if (wrongPassword) {
             *wrongPassword = true;
         }

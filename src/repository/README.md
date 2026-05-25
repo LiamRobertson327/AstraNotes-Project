@@ -15,6 +15,10 @@ Ownership and lifetime
  - Legacy repository methods return raw `Note*` / `Snapshot*` pointers. The caller owns those objects and must delete them after use.
  - Methods that accept `Note &` or `Snapshot &` do not take ownership; callers retain responsibility for the objects they pass in.
  - This repository layer is a good candidate for incremental RAII migration, starting with one return path at a time.
+ - Migration status: Several repository return paths have been migrated to RAII semantics.
+	 - Refactored to return `std::vector<std::unique_ptr<Note>>` for: `getTrashedNotes`, `getAll`, `searchByTitlePaged`, `searchByContent`, and `searchByTitle`.
+	 - Snapshot APIs now return RAII types: `std::vector<std::unique_ptr<Snapshot>> getSnapshotsByNoteId(...)` and `std::unique_ptr<Snapshot> getSnapshotById(...)`.
+	 - Remaining legacy boundaries (if any) will be migrated incrementally; check `INoteRepository.h` for the current canonical signatures.
 
 Concurrency and testing
  - `SqliteNoteRepository` should use transactions for multi-step updates (save + snapshot) to keep state consistent under concurrent access.

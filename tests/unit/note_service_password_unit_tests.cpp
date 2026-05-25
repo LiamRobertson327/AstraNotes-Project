@@ -3,8 +3,12 @@
 #include <memory>
 
 #include "../../src/model/Note.h"
+#include "../../src/model/Snapshot.h"
 #include "../../src/repository/INoteRepository.h"
 #include "../../src/service/impl/NoteService.h"
+
+using SnapshotPtr = std::unique_ptr<Snapshot>;
+using SnapshotList = std::vector<SnapshotPtr>;
 
 class MockPasswordRepo : public INoteRepository {
 public:
@@ -44,10 +48,10 @@ public:
     bool isConnected() const override { return true; }
     bool saveSnapshot(class Snapshot &snapshot) override { Q_UNUSED(snapshot); return true; }
     bool saveSnapshot(class Snapshot &snapshot, const QString &password) override { Q_UNUSED(snapshot); Q_UNUSED(password); return true; }
-    QVector<class Snapshot*> getSnapshotsByNoteId(qint64 noteId) override { Q_UNUSED(noteId); return {}; }
-    QVector<class Snapshot*> getSnapshotsByNoteId(qint64 noteId, const QString &password) override { Q_UNUSED(noteId); Q_UNUSED(password); return {}; }
-    class Snapshot* getSnapshotById(qint64 snapshotId) override { Q_UNUSED(snapshotId); return nullptr; }
-    class Snapshot* getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword = nullptr) override { Q_UNUSED(snapshotId); Q_UNUSED(password); if (wrongPassword) *wrongPassword = false; return nullptr; }
+    SnapshotList getSnapshotsByNoteId(qint64 noteId) override { Q_UNUSED(noteId); return {}; }
+    SnapshotList getSnapshotsByNoteId(qint64 noteId, const QString &password) override { Q_UNUSED(noteId); Q_UNUSED(password); return {}; }
+    SnapshotPtr getSnapshotById(qint64 snapshotId) override { Q_UNUSED(snapshotId); return {}; }
+    SnapshotPtr getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword = nullptr) override { Q_UNUSED(snapshotId); Q_UNUSED(password); if (wrongPassword) *wrongPassword = false; return {}; }
     bool deleteSnapshotById(qint64 snapshotId) override { Q_UNUSED(snapshotId); return true; }
     bool deleteOldestSnapshotForNote(qint64 noteId) override { Q_UNUSED(noteId); return true; }
     bool pruneOldSnapshots(qint64 noteId) override { Q_UNUSED(noteId); return true; }
