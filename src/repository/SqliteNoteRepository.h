@@ -48,6 +48,9 @@ public:
     bool deleteOldestSnapshotForNote(qint64 noteId);
     // Trash/Retention (Phase 8)
     QVector<Note*> getTrashedNotes();
+    QVector<Note*> getTrashedNotes(int limit, int offset);
+    int countTrashedNotes();
+    bool isNoteTrashed(qint64 id);
     bool trashNote(qint64 id);
     bool restoreNote(qint64 id);
     bool purgeTrashedNotes(int olderThanDays = 14);

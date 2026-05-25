@@ -209,8 +209,6 @@ bool SqliteNoteRepository::save(Note &note, const QString &password) {
                 return false;
             }
 
-            // CRITICAL: We update the local note metadata, but NOT note.setContent().
-            // This prevents "Double Encryption" if save() is called twice.
             contentToPersist = payload.ciphertextBase64;
             saltToPersist = payload.saltBase64;
             ivToPersist = payload.ivBase64;
@@ -422,9 +420,23 @@ bool SqliteNoteRepository::deleteById(qint64 id) {
 }
 
 QVector<Note*> SqliteNoteRepository::getTrashedNotes() {
+    return getTrashedNotes(-1, 0);
+}
+
+QVector<Note*> SqliteNoteRepository::getTrashedNotes(int limit, int offset) {
     QVector<Note*> results;
     QSqlQuery query(db);
-    query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at, trashed_at FROM notes WHERE is_trashed = 1 ORDER BY trashed_at DESC");
+
+    QString sql = "SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at, trashed_at FROM notes WHERE is_trashed = 1 ORDER BY trashed_at DESC";
+    if (limit >= 0) {
+        sql += " LIMIT :limit OFFSET :offset";
+    }
+
+    query.prepare(sql);
+    if (limit >= 0) {
+        query.bindValue(":limit", limit);
+        query.bindValue(":offset", offset);
+    }
 
     if (!query.exec()) {
         qWarning() << "[SqliteNoteRepository::getTrashedNotes] Failed to fetch trashed notes:" << query.lastError().text();
@@ -445,6 +457,37 @@ QVector<Note*> SqliteNoteRepository::getTrashedNotes() {
     }
 
     return results;
+}
+
+int SqliteNoteRepository::countTrashedNotes() {
+    QSqlQuery query(db);
+    if (!query.exec("SELECT COUNT(*) AS cnt FROM notes WHERE is_trashed = 1")) {
+        qWarning() << "[SqliteNoteRepository::countTrashedNotes] Failed to count trashed notes:" << query.lastError().text();
+        return 0;
+    }
+
+    if (query.next()) {
+        return query.value("cnt").toInt();
+    }
+
+    return 0;
+}
+
+bool SqliteNoteRepository::isNoteTrashed(qint64 id) {
+    QSqlQuery query(db);
+    query.prepare("SELECT is_trashed FROM notes WHERE id = :id");
+    query.bindValue(":id", id);
+
+    if (!query.exec()) {
+        qWarning() << "[SqliteNoteRepository::isNoteTrashed] Failed to query note state:" << query.lastError().text();
+        return false;
+    }
+
+    if (!query.next()) {
+        return false;
+    }
+
+    return query.value("is_trashed").toInt() == 1;
 }
 
 bool SqliteNoteRepository::trashNote(qint64 id) {

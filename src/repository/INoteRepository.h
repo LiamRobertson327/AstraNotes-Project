@@ -62,6 +62,9 @@ public:
 
     // Trash / Retention API (Phase 8)
     virtual QVector<Note*> getTrashedNotes() = 0;
+    virtual QVector<Note*> getTrashedNotes(int limit, int offset) = 0;
+    virtual int countTrashedNotes() = 0;
+    virtual bool isNoteTrashed(qint64 id) = 0;
     virtual bool trashNote(qint64 id) = 0;
     virtual bool restoreNote(qint64 id) = 0;
     // Purge trashed notes older than `olderThanDays`. Default 14 days.
