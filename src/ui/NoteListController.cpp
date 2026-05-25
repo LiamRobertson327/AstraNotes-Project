@@ -13,7 +13,8 @@ NoteListController::NoteListController(QListWidget *noteList, INoteService *note
       m_noteService(noteService),
       m_pageSize(50),
       m_currentOffset(0),
-      m_allLoaded(false) {
+    m_allLoaded(false),
+    m_loading(false) {
     if (m_noteList) {
         connect(m_noteList, &QListWidget::itemClicked, this, &NoteListController::onItemClicked);
         if (m_noteList->verticalScrollBar()) {
@@ -35,9 +36,11 @@ void NoteListController::reload() {
 }
 
 void NoteListController::loadPage(int offset) {
-    if (!m_noteList || !m_noteService || m_allLoaded) {
+    if (!m_noteList || !m_noteService || m_allLoaded || m_loading) {
         return;
     }
+
+    m_loading = true;
 
     QVector<Note *> page = m_noteService->searchByTitlePaged(QString(), m_pageSize, offset);
     qDebug() << "[NoteListController::loadPage] Loaded" << page.size() << "notes for offset" << offset;
@@ -57,6 +60,8 @@ void NoteListController::loadPage(int offset) {
     } else {
         m_currentOffset += page.size();
     }
+
+    m_loading = false;
 }
 
 void NoteListController::onItemClicked(QListWidgetItem *item) {

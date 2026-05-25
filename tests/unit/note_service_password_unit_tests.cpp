@@ -23,6 +23,9 @@ public:
     QVector<Note*> searchByTitle(const QString &query) override { Q_UNUSED(query); return {}; }
     QVector<Note*> searchByContent(const QString &query) override { Q_UNUSED(query); return {}; }
     QVector<Note*> getTrashedNotes() override { return {}; }
+    QVector<Note*> getTrashedNotes(int limit, int offset) override { Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
+    int countTrashedNotes() override { return 0; }
+    bool isNoteTrashed(qint64 id) override { Q_UNUSED(id); return false; }
     bool trashNote(qint64 id) override { Q_UNUSED(id); return true; }
     bool restoreNote(qint64 id) override { Q_UNUSED(id); return true; }
     bool purgeTrashedNotes(int olderThanDays = 14) override { Q_UNUSED(olderThanDays); return true; }
@@ -80,6 +83,33 @@ private slots:
 
         QVERIFY(!service.saveNote(note, "secret", &error));
         QVERIFY(error.contains("unavailable"));
+    }
+
+    void saveNote_rejectsOversizedTitle() {
+        MockPasswordRepo repo;
+        NoteService service(&repo);
+
+        Note note("plaintext", QString(NoteService::kMaxTitleCharacters + 1, 'a'));
+        note.setContent("hello world");
+
+        QString error;
+        QVERIFY(!service.saveNote(note, QString(), &error));
+        QVERIFY(!repo.saveCalled);
+        QVERIFY(error.contains("Title exceeds"));
+    }
+
+    void saveNote_rejectsOversizedContent() {
+        MockPasswordRepo repo;
+        NoteService service(&repo);
+
+        QByteArray bytes(NoteService::kMaxContentBytes + 1, 'b');
+        Note note("plaintext", "Valid title");
+        note.setContent(QString::fromUtf8(bytes));
+
+        QString error;
+        QVERIFY(!service.saveNote(note, QString(), &error));
+        QVERIFY(!repo.saveCalled);
+        QVERIFY(error.contains("Content exceeds"));
     }
 };
 

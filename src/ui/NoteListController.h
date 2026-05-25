@@ -34,6 +34,7 @@ private:
     int m_pageSize;
     int m_currentOffset;
     bool m_allLoaded;
+    bool m_loading;
 };
 
 #endif // NOTELISTCONTROLLER_H

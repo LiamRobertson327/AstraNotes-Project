@@ -18,6 +18,9 @@ public:
     QVector<Note*> searchByTitle(const QString &query) override { Q_UNUSED(query); return {}; }
     QVector<Note*> searchByContent(const QString &query) override { Q_UNUSED(query); return {}; }
     QVector<Note*> getTrashedNotes() override { return {}; }
+    QVector<Note*> getTrashedNotes(int limit, int offset) override { Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
+    int countTrashedNotes() override { return 0; }
+    bool isNoteTrashed(qint64 id) override { Q_UNUSED(id); return true; }
     bool trashNote(qint64 id) override { trashCalled = true; lastTrashedId = id; return true; }
     bool restoreNote(qint64 id) override { Q_UNUSED(id); return true; }
     bool purgeTrashedNotes(int olderThanDays = 14) override { Q_UNUSED(olderThanDays); return true; }
