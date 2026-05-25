@@ -547,14 +547,14 @@ bool SqliteNoteRepository::update(const Note &note) {
     return const_cast<SqliteNoteRepository *>(this)->save(const_cast<Note &>(note), QString());
 }
 
-QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
+std::vector<std::unique_ptr<Note>> SqliteNoteRepository::searchByTitle(const QString &query_str) {
     // Full-text search on titles using FTS5 virtual table when available.
     // Falls back to LIKE search if FTS5 is not available.
     // Results ordered by most recently modified first (UI UX: newest edits first).
-    // Caller assumes ownership of returned Note* pointers.
-    QVector<Note*> results;
+    // Returns move-owned unique_ptrs in a std::vector.
+    std::vector<std::unique_ptr<Note>> results;
     QSqlQuery query(db);
-    
+
     if (query_str.isEmpty()) {
         // Empty query: return all notes
         query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes ORDER BY modified_at DESC");
@@ -568,27 +568,27 @@ QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
             ORDER BY n.modified_at DESC
         )");
         query.addBindValue(query_str);
-        
+
         if (!query.exec() || !query.first()) {
             // FTS5 not available or no results; fall back to LIKE
             query.clear();
             query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND title LIKE :query ORDER BY modified_at DESC");
             query.addBindValue("%" + query_str + "%");
-            
+
             if (!query.exec()) {
                 qWarning() << "Failed to search by title:" << query.lastError().text();
                 return results;
             }
         }
     }
-    
+
     if (!query.exec()) {
         qWarning() << "Failed to search by title:" << query.lastError().text();
         return results;
     }
-    
+
     while (query.next()) {
-        Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+        auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
         note->setNoteId(query.value("id").toLongLong());
         note->setContent(query.value("content").toString());
         note->setCreatedAt(toUtcDateTime(query.value("created_at")));
@@ -597,9 +597,9 @@ QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
         note->setEncryptionSalt(query.value("encryption_salt").toString());
         note->setEncryptionIv(query.value("encryption_iv").toString());
         note->setEncryptionTag(query.value("encryption_tag").toString());
-        results.append(note);
+        results.push_back(std::move(note));
     }
-    
+
     qDebug() << "Found" << results.size() << "notes matching:" << query_str;
     return results;
 }

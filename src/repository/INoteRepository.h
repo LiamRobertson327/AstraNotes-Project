@@ -54,8 +54,8 @@ public:
     // Search operations
     // searchByTitle(): Case-insensitive LIKE search on title.
     //                  Returns matching notes ordered by most recently modified.
-    //                  Caller assumes ownership of returned Note* pointers.
-    virtual QVector<Note*> searchByTitle(const QString &query) = 0;
+    //                  Caller receives move-owned `unique_ptr<Note>` instances.
+    virtual std::vector<std::unique_ptr<Note>> searchByTitle(const QString &query) = 0;
 
     // searchByContent(): Case-insensitive LIKE search on content.
     //                    Returns matching notes ordered by most recently modified.

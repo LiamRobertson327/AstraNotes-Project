@@ -30,7 +30,7 @@ public:
     std::vector<std::unique_ptr<Note>> getAll() override;
     bool deleteById(qint64 id) override;
     bool update(const Note &note) override;
-    QVector<Note*> searchByTitle(const QString &query) override;
+    std::vector<std::unique_ptr<Note>> searchByTitle(const QString &query) override;
     std::vector<std::unique_ptr<Note>> searchByContent(const QString &query) override;
     bool save(Note &note, const QString &password);
     Note* getById(qint64 id, const QString &password, bool *wrongPassword = nullptr);

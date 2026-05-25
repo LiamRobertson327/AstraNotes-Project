@@ -17,7 +17,7 @@ public:
     std::vector<std::unique_ptr<Note>> getAll() override { return {}; }
     bool deleteById(qint64 id) override { Q_UNUSED(id); return true; }
     bool update(const Note &note) override { Q_UNUSED(note); return true; }
-    QVector<Note*> searchByTitle(const QString &query) override { Q_UNUSED(query); return {}; }
+    std::vector<std::unique_ptr<Note>> searchByTitle(const QString &query) override { Q_UNUSED(query); return {}; }
     std::vector<std::unique_ptr<Note>> searchByContent(const QString &query) override { Q_UNUSED(query); return {}; }
     std::vector<std::unique_ptr<Note>> getTrashedNotes() override { return {}; }
     std::vector<std::unique_ptr<Note>> getTrashedNotes(int limit, int offset) override { Q_UNUSED(limit); Q_UNUSED(offset); return {}; }
