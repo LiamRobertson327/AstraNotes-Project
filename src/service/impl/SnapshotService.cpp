@@ -126,5 +126,10 @@ Snapshot *SnapshotService::revertToSnapshot(Note &currentNote, qint64 snapshotId
         // non-fatal; the target snapshot is already loaded in memory.
     }
 
+    // Ensure retention policy is enforced immediately so only the configured
+    // maximum number of snapshots remain (default: 2). This prevents requiring
+    // a manual save/leave cycle for pruning after a revert.
+    enforceSnapshotLimit(currentNote.noteId(), 2);
+
     return target;
 }
