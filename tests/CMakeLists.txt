@@ -8,7 +8,7 @@ foreach(smoke_src IN LISTS SMOKE_SOURCES)
     get_filename_component(smoke_name ${smoke_src} NAME_WE)
     add_executable(${smoke_name} ${smoke_src})
     target_include_directories(${smoke_name} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-    target_link_libraries(${smoke_name} PRIVATE Qt6::Test Qt6::Core Qt6::Sql OpenSSL::Crypto AstraCore)
+    target_link_libraries(${smoke_name} PRIVATE Qt6::Test Qt6::Core Qt6::Sql Qt6::Widgets OpenSSL::Crypto AstraCore AstraAppUI)
     add_test(NAME ${smoke_name} COMMAND ${smoke_name})
 endforeach()
 
@@ -20,6 +20,16 @@ foreach(unit_src IN LISTS UNIT_SOURCES)
     target_include_directories(${unit_name} PRIVATE ${CMAKE_SOURCE_DIR}/src)
     target_link_libraries(${unit_name} PRIVATE Qt6::Test Qt6::Core Qt6::Sql OpenSSL::Crypto AstraCore)
     add_test(NAME ${unit_name} COMMAND ${unit_name})
+endforeach()
+
+# Performance tests that validate the documented NFR timing targets.
+file(GLOB PERFORMANCE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/performance/*.cpp")
+foreach(perf_src IN LISTS PERFORMANCE_SOURCES)
+    get_filename_component(perf_name ${perf_src} NAME_WE)
+    add_executable(${perf_name} ${perf_src})
+    target_include_directories(${perf_name} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(${perf_name} PRIVATE Qt6::Test Qt6::Core Qt6::Sql OpenSSL::Crypto AstraCore)
+    add_test(NAME ${perf_name} COMMAND ${perf_name})
 endforeach()
 
 # Integration tests that exercise multiple layers together.
