@@ -5,12 +5,6 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# if(MSVC)
-#     # Newer MSVC toolchains use -std:c++latest for C++23 and may break Qt 6.5's stdext lookup.
-#     # Force-include a tiny compat header for all translation units.
-#     add_compile_options("/FI${CMAKE_SOURCE_DIR}/src/compat/msvc_qt_compat.h")
-# endif()
-
 # 1. Setup the Qt Path
 set(Qt6_DIR "C:/Qt/6.11.0/mingw_64/lib/cmake/Qt6")
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core Widgets Sql Test)
