@@ -9,7 +9,7 @@
 NoteService::NoteService(INoteRepository *repository)
     : m_repository(repository) {}
 
-Note *NoteService::loadNote(qint64 noteId, const QString &password, bool *wrongPassword, QString *errorMessage) {
+std::unique_ptr<Note> NoteService::loadNote(qint64 noteId, const QString &password, bool *wrongPassword, QString *errorMessage) {
     // Forward to the robust loader to centralize password-detection
     // and error reporting behavior.
     bool needsPassword = false;
@@ -47,9 +47,8 @@ bool NoteService::saveNote(Note &note, const QString &password, QString *errorMe
     return true;
 }
 
-Note *NoteService::createNote(const QString &typeId, const QString &title) {
-    Note *newNote = new Note(typeId, title);
-    return newNote;
+std::unique_ptr<Note> NoteService::createNote(const QString &typeId, const QString &title) {
+    return std::make_unique<Note>(typeId, title);
 }
 
 bool NoteService::isConnected() {
@@ -64,8 +63,8 @@ int NoteService::countActiveNotesByType(const QString &typeId) {
     return m_repository ? m_repository->countActiveNotesByType(typeId) : 0;
 }
 
-QVector<Note*> NoteService::searchByTitlePaged(const QString &query, int pageSize, int offset) {
-    return m_repository ? m_repository->searchByTitlePaged(query, pageSize, offset) : QVector<Note*>();
+std::vector<std::unique_ptr<Note>> NoteService::searchByTitlePaged(const QString &query, int pageSize, int offset) {
+    return m_repository ? m_repository->searchByTitlePaged(query, pageSize, offset) : std::vector<std::unique_ptr<Note>>();
 }
 
 bool NoteService::trashNote(qint64 noteId) {
@@ -73,7 +72,7 @@ bool NoteService::trashNote(qint64 noteId) {
     return m_repository->trashNote(noteId);
 }
 
-Note *NoteService::loadNoteRobust(qint64 noteId, const QString &password, bool *needsPassword, bool *wrongPassword, QString *errorMessage) {
+std::unique_ptr<Note> NoteService::loadNoteRobust(qint64 noteId, const QString &password, bool *needsPassword, bool *wrongPassword, QString *errorMessage) {
     if (!m_repository) {
         if (errorMessage) *errorMessage = "Note repository is unavailable";
         return nullptr;
@@ -81,7 +80,7 @@ Note *NoteService::loadNoteRobust(qint64 noteId, const QString &password, bool *
 
     // If no password was provided, fetch metadata and detect if password is required.
     if (password.isEmpty()) {
-        Note *note = m_repository->getById(noteId);
+        std::unique_ptr<Note> note = m_repository->getById(noteId);
         if (!note) {
             if (errorMessage) *errorMessage = "Note not found";
             return nullptr;

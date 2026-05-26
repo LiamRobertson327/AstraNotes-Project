@@ -2,6 +2,8 @@
 #define TRASHSERVICE_H
 
 #include "../interfaces/ITrashService.h"
+#include <memory>
+#include <vector>
 
 class INoteRepository;
 class Note;
@@ -18,7 +20,7 @@ public:
     bool restoreNote(qint64 noteId) override;
     bool purgeNote(qint64 noteId) override;
     void purgeOldTrashedNotes(int retentionDays = 14) override;
-    QVector<Note *> getTrashedNotes(int limit = 100, int offset = 0) override;
+    std::vector<std::unique_ptr<Note>> getTrashedNotes(int limit = 100, int offset = 0) override;
     int countTrashedNotes() override;
     bool isNoteTrashed(qint64 noteId) override;
 

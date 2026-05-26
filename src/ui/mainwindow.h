@@ -18,6 +18,7 @@
 #include <QVector>
 #include <QTimer>
 #include <QCheckBox>
+#include <memory>
 
 class QCloseEvent;
 class QKeyEvent;
@@ -70,6 +71,7 @@ private:
 
     // --- Left Sidebar (Saved Notes) ---
     QLabel *listTitle;
+    QLineEdit *savedNotesSearchBar;
     QListWidget *noteList;
     QLabel *systemInfoLabel;
 
@@ -82,7 +84,7 @@ private:
     QToolBar *formattingToolbar;
     
         // Current note and type state (Phase 1)
-        Note *currentNote;
+        std::unique_ptr<Note> currentNote;
         QString currentTypeId;
         QString databasePath;
         bool isLoadingDocument;

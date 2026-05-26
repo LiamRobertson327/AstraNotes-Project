@@ -2,6 +2,8 @@
 #include <QTemporaryDir>
 #include <QFile>
 #include <QDir>
+#include <vector>
+#include <memory>
 
 #include "../src/crypto/EncryptionService.h"
 #include "../src/repository/SqliteNoteRepository.h"
@@ -50,11 +52,10 @@ void SmokeTest::testRepositorySaveLoad()
     qint64 id = n.noteId();
     QVERIFY(id > 0);
 
-    Note* loaded = repo.getById(id);
+    std::unique_ptr<Note> loaded = repo.getById(id);
     QVERIFY(loaded != nullptr);
     QCOMPARE(loaded->title(), n.title());
     QCOMPARE(loaded->content(), n.content());
-    delete loaded;
 }
 
 void SmokeTest::testSnapshotAndTrash()
@@ -74,12 +75,12 @@ void SmokeTest::testSnapshotAndTrash()
     QVERIFY(repo.trashNote(n.noteId()));
 
     auto trashed = repo.getTrashedNotes();
-    QVERIFY(!trashed.isEmpty());
+    QVERIFY(!trashed.empty());
 
     // Purge notes older than 0 days (immediate)
     QVERIFY(repo.purgeTrashedNotes(0));
     auto trashed2 = repo.getTrashedNotes();
-    QVERIFY(trashed2.isEmpty());
+    QVERIFY(trashed2.empty());
 }
 
 #include "SmokeTest.moc"

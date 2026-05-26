@@ -1,4 +1,6 @@
 #include <QtTest>
+#include <vector>
+#include <memory>
 #include "../../src/service/impl/TrashService.h"
 #include "../../src/repository/SqliteNoteRepository.h"
 #include "../../src/model/Note.h"
@@ -20,20 +22,18 @@ private slots:
         // Trash
         QVERIFY(svc.trashNote(nid));
         auto trashed = svc.getTrashedNotes();
-        QVERIFY(!trashed.isEmpty());
+        QVERIFY(!trashed.empty());
 
         // Restore
         QVERIFY(svc.restoreNote(nid));
         auto trashed2 = svc.getTrashedNotes();
-        QCOMPARE(trashed2.size(), 0);
+        QCOMPARE(trashed2.size(), size_t(0));
 
         // Trash again and purge
         QVERIFY(svc.trashNote(nid));
         QVERIFY(svc.purgeNote(nid));
-        Note* after = repo.getById(nid);
+        std::unique_ptr<Note> after = repo.getById(nid);
         QVERIFY(after == nullptr);
-
-        qDeleteAll(trashed);
     }
 };
 

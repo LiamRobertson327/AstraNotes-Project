@@ -274,7 +274,7 @@ bool SqliteNoteRepository::save(Note &note, const QString &password) {
     return true;
 }
 
-Note* SqliteNoteRepository::getById(qint64 id) {
+std::unique_ptr<Note> SqliteNoteRepository::getById(qint64 id) {
     QSqlQuery query(db);
     query.prepare(R"(
         SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at
@@ -293,7 +293,7 @@ Note* SqliteNoteRepository::getById(qint64 id) {
         return nullptr;
     }
 
-    Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+    auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
     note->setNoteId(query.value("id").toLongLong());
     note->setCreatedAt(toUtcDateTime(query.value("created_at")));
     note->setLastModified(toUtcDateTime(query.value("modified_at")));
@@ -305,7 +305,7 @@ Note* SqliteNoteRepository::getById(qint64 id) {
     return note;
 }
 
-Note* SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wrongPassword) {
+std::unique_ptr<Note> SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wrongPassword) {
     if (wrongPassword) {
         *wrongPassword = false;
     }
@@ -328,7 +328,7 @@ Note* SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wr
         return nullptr;
     }
 
-    Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+    auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
     note->setNoteId(query.value("id").toLongLong());
     note->setCreatedAt(toUtcDateTime(query.value("created_at")));
     note->setLastModified(toUtcDateTime(query.value("modified_at")));
@@ -355,7 +355,6 @@ Note* SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wr
 
     if (!result.success) {
         qWarning() << "[SqliteNoteRepository::getById] Decryption failed for note ID:" << id << result.errorMessage;
-        delete note;
         if (wrongPassword) {
             *wrongPassword = true;
         }
@@ -366,24 +365,23 @@ Note* SqliteNoteRepository::getById(qint64 id, const QString &password, bool *wr
     return note;
 }
 
-QVector<Note*> SqliteNoteRepository::getAll() {
+std::vector<std::unique_ptr<Note>> SqliteNoteRepository::getAll() {
     // Retrieve all notes from the database, sorted by most recently modified first.
     // Used on app startup to populate the UI sidebar.
-    // Caller assumes ownership of all Note* pointers in the returned vector; must delete them.
-    // Returns empty vector on error (not an error condition itself).
+    // Returns move-owned unique_ptrs in a std::vector; caller takes ownership.
     qDebug() << "[SqliteNoteRepository::getAll] Starting getAll";
-    QVector<Note*> notes;
+    std::vector<std::unique_ptr<Note>> notes;
     QSqlQuery query(db);
-    query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 ORDER BY modified_at DESC");
-    
+    query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at, trashed_at FROM notes WHERE is_trashed = 0 ORDER BY modified_at DESC");
+
     if (!query.exec()) {
         qWarning() << "[SqliteNoteRepository::getAll] Failed to fetch all notes:" << query.lastError().text();
         return notes;
     }
-    
-    // Build a Note object for each row, preserving field order: constructor, then setters.
+
+    // Build a Note object for each row and push into vector as unique_ptr.
     while (query.next()) {
-        Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+        auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
         note->setNoteId(query.value("id").toLongLong());
         note->setContent(query.value("content").toString());
         note->setCreatedAt(toUtcDateTime(query.value("created_at")));
@@ -398,9 +396,9 @@ QVector<Note*> SqliteNoteRepository::getAll() {
         note->setEncryptionSalt(query.value("encryption_salt").toString());
         note->setEncryptionIv(query.value("encryption_iv").toString());
         note->setEncryptionTag(query.value("encryption_tag").toString());
-        notes.append(note);
+        notes.push_back(std::move(note));
     }
-    
+
     qDebug() << "[SqliteNoteRepository::getAll] Fetched" << notes.size() << "notes from database";
     return notes;
 }
@@ -419,12 +417,12 @@ bool SqliteNoteRepository::deleteById(qint64 id) {
     return true;
 }
 
-QVector<Note*> SqliteNoteRepository::getTrashedNotes() {
+std::vector<std::unique_ptr<Note>> SqliteNoteRepository::getTrashedNotes() {
     return getTrashedNotes(-1, 0);
 }
 
-QVector<Note*> SqliteNoteRepository::getTrashedNotes(int limit, int offset) {
-    QVector<Note*> results;
+std::vector<std::unique_ptr<Note>> SqliteNoteRepository::getTrashedNotes(int limit, int offset) {
+    std::vector<std::unique_ptr<Note>> results;
     QSqlQuery query(db);
 
     QString sql = "SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at, trashed_at FROM notes WHERE is_trashed = 1 ORDER BY trashed_at DESC";
@@ -444,7 +442,7 @@ QVector<Note*> SqliteNoteRepository::getTrashedNotes(int limit, int offset) {
     }
 
     while (query.next()) {
-        Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+        auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
         note->setNoteId(query.value("id").toLongLong());
         note->setContent(query.value("content").toString());
         note->setCreatedAt(toUtcDateTime(query.value("created_at")));
@@ -453,7 +451,7 @@ QVector<Note*> SqliteNoteRepository::getTrashedNotes(int limit, int offset) {
         note->setEncryptionSalt(query.value("encryption_salt").toString());
         note->setEncryptionIv(query.value("encryption_iv").toString());
         note->setEncryptionTag(query.value("encryption_tag").toString());
-        results.append(note);
+        results.push_back(std::move(note));
     }
 
     return results;
@@ -548,14 +546,14 @@ bool SqliteNoteRepository::update(const Note &note) {
     return const_cast<SqliteNoteRepository *>(this)->save(const_cast<Note &>(note), QString());
 }
 
-QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
+std::vector<std::unique_ptr<Note>> SqliteNoteRepository::searchByTitle(const QString &query_str) {
     // Full-text search on titles using FTS5 virtual table when available.
     // Falls back to LIKE search if FTS5 is not available.
     // Results ordered by most recently modified first (UI UX: newest edits first).
-    // Caller assumes ownership of returned Note* pointers.
-    QVector<Note*> results;
+    // Returns move-owned unique_ptrs in a std::vector.
+    std::vector<std::unique_ptr<Note>> results;
     QSqlQuery query(db);
-    
+
     if (query_str.isEmpty()) {
         // Empty query: return all notes
         query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes ORDER BY modified_at DESC");
@@ -569,27 +567,27 @@ QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
             ORDER BY n.modified_at DESC
         )");
         query.addBindValue(query_str);
-        
+
         if (!query.exec() || !query.first()) {
             // FTS5 not available or no results; fall back to LIKE
             query.clear();
             query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND title LIKE :query ORDER BY modified_at DESC");
             query.addBindValue("%" + query_str + "%");
-            
+
             if (!query.exec()) {
                 qWarning() << "Failed to search by title:" << query.lastError().text();
                 return results;
             }
         }
     }
-    
+
     if (!query.exec()) {
         qWarning() << "Failed to search by title:" << query.lastError().text();
         return results;
     }
-    
+
     while (query.next()) {
-        Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+        auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
         note->setNoteId(query.value("id").toLongLong());
         note->setContent(query.value("content").toString());
         note->setCreatedAt(toUtcDateTime(query.value("created_at")));
@@ -598,31 +596,29 @@ QVector<Note*> SqliteNoteRepository::searchByTitle(const QString &query_str) {
         note->setEncryptionSalt(query.value("encryption_salt").toString());
         note->setEncryptionIv(query.value("encryption_iv").toString());
         note->setEncryptionTag(query.value("encryption_tag").toString());
-        results.append(note);
+        results.push_back(std::move(note));
     }
-    
+
     qDebug() << "Found" << results.size() << "notes matching:" << query_str;
     return results;
 }
 
-QVector<Note*> SqliteNoteRepository::searchByContent(const QString &query_str) {
+std::vector<std::unique_ptr<Note>> SqliteNoteRepository::searchByContent(const QString &query_str) {
     // Case-insensitive substring search on note content using LIKE '%query%'.
-    // Note: No index on content column (would be too large for typical notes).
-    // Full-text search can be added later if performance becomes an issue.
     // Results ordered by most recently modified first.
-    // Caller assumes ownership of returned Note* pointers.
-    QVector<Note*> results;
+    // Returns move-owned unique_ptrs in a std::vector.
+    std::vector<std::unique_ptr<Note>> results;
     QSqlQuery query(db);
     query.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND content LIKE :query ORDER BY modified_at DESC");
     query.addBindValue("%" + query_str + "%");
-    
+
     if (!query.exec()) {
         qWarning() << "Failed to search by content:" << query.lastError().text();
         return results;
     }
-    
+
     while (query.next()) {
-        Note *note = new Note(query.value("typeId").toString(), query.value("title").toString());
+        auto note = std::make_unique<Note>(query.value("typeId").toString(), query.value("title").toString());
         note->setNoteId(query.value("id").toLongLong());
         note->setContent(query.value("content").toString());
         note->setCreatedAt(toUtcDateTime(query.value("created_at")));
@@ -631,14 +627,14 @@ QVector<Note*> SqliteNoteRepository::searchByContent(const QString &query_str) {
         note->setEncryptionSalt(query.value("encryption_salt").toString());
         note->setEncryptionIv(query.value("encryption_iv").toString());
         note->setEncryptionTag(query.value("encryption_tag").toString());
-        results.append(note);
+        results.push_back(std::move(note));
     }
-    
+
     return results;
 }
 
-QVector<Note*> SqliteNoteRepository::searchByTitlePaged(const QString &query, int limit, int offset) {
-    QVector<Note*> results;
+std::vector<std::unique_ptr<Note>> SqliteNoteRepository::searchByTitlePaged(const QString &query, int limit, int offset) {
+    std::vector<std::unique_ptr<Note>> results;
     QSqlQuery q(db);
     QString pattern = query.trimmed().isEmpty() ? "%%" : ("%" + query + "%");
     q.prepare("SELECT id, typeId, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at, modified_at FROM notes WHERE is_trashed = 0 AND title LIKE :query ORDER BY modified_at DESC, id DESC LIMIT :limit OFFSET :offset");
@@ -652,7 +648,7 @@ QVector<Note*> SqliteNoteRepository::searchByTitlePaged(const QString &query, in
     }
 
     while (q.next()) {
-        Note *note = new Note(q.value("typeId").toString(), q.value("title").toString());
+        auto note = std::make_unique<Note>(q.value("typeId").toString(), q.value("title").toString());
         note->setNoteId(q.value("id").toLongLong());
         note->setContent(q.value("content").toString());
         note->setCreatedAt(toUtcDateTime(q.value("created_at")));
@@ -661,7 +657,7 @@ QVector<Note*> SqliteNoteRepository::searchByTitlePaged(const QString &query, in
         note->setEncryptionSalt(q.value("encryption_salt").toString());
         note->setEncryptionIv(q.value("encryption_iv").toString());
         note->setEncryptionTag(q.value("encryption_tag").toString());
-        results.append(note);
+        results.push_back(std::move(note));
     }
 
     return results;
@@ -873,13 +869,13 @@ bool SqliteNoteRepository::saveSnapshot(Snapshot &snapshot, const QString &passw
     return false;
 }
 
-QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
+std::vector<std::unique_ptr<Snapshot>> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
     // Retrieve all snapshots for a given note, ordered by creation time descending (newest first).
     // Used by the snapshot list UI.
     // Caller assumes ownership of all Snapshot* pointers; must delete them.
     qDebug() << "[SqliteNoteRepository::getSnapshotsByNoteId] Fetching snapshots for note ID:" << noteId;
     
-    QVector<Snapshot*> snapshots;
+    std::vector<std::unique_ptr<Snapshot>> snapshots;
     QSqlQuery query(db);
     query.prepare("SELECT id, note_id, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at FROM snapshots WHERE note_id = :note_id ORDER BY created_at DESC");
     query.addBindValue(noteId);
@@ -890,7 +886,7 @@ QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
     }
     
     while (query.next()) {
-        Snapshot *snapshot = new Snapshot(
+        auto snapshot = std::make_unique<Snapshot>(
             query.value("note_id").toLongLong(),
             query.value("title").toString(),
             query.value("content").toString()
@@ -901,14 +897,14 @@ QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId) {
         snapshot->setEncryptionSalt(query.value("encryption_salt").toString());
         snapshot->setEncryptionIv(query.value("encryption_iv").toString());
         snapshot->setEncryptionTag(query.value("encryption_tag").toString());
-        snapshots.append(snapshot);
+        snapshots.push_back(std::move(snapshot));
     }
     
     qDebug() << "[SqliteNoteRepository::getSnapshotsByNoteId] Fetched" << snapshots.size() << "snapshots for note ID:" << noteId;
     return snapshots;
 }
 
-QVector<Snapshot*> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId, const QString &password) {
+std::vector<std::unique_ptr<Snapshot>> SqliteNoteRepository::getSnapshotsByNoteId(qint64 noteId, const QString &password) {
     Q_UNUSED(password);
     // For listing purposes we return the same metadata list; decryption is handled by getSnapshotById when needed.
     return getSnapshotsByNoteId(noteId);
@@ -932,7 +928,7 @@ bool SqliteNoteRepository::deleteSnapshotById(qint64 snapshotId) {
     return true;
 }
 
-Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
+std::unique_ptr<Snapshot> SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
     QSqlQuery query(db);
     query.prepare("SELECT id, note_id, title, content, is_secured, encryption_salt, encryption_iv, encryption_tag, created_at FROM snapshots WHERE id = :id");
     query.bindValue(":id", snapshotId);
@@ -947,7 +943,7 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
         return nullptr;
     }
 
-    Snapshot *snapshot = new Snapshot(
+    auto snapshot = std::make_unique<Snapshot>(
         query.value("note_id").toLongLong(),
         query.value("title").toString(),
         query.value("content").toString()
@@ -961,7 +957,7 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId) {
     return snapshot;
 }
 
-Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword) {
+std::unique_ptr<Snapshot> SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString &password, bool *wrongPassword) {
     if (wrongPassword) {
         *wrongPassword = false;
     }
@@ -982,7 +978,7 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString
         return nullptr;
     }
 
-    Snapshot *snapshot = new Snapshot(
+    auto snapshot = std::make_unique<Snapshot>(
         query.value("note_id").toLongLong(),
         query.value("title").toString(),
         query.value("content").toString()
@@ -1008,7 +1004,6 @@ Snapshot* SqliteNoteRepository::getSnapshotById(qint64 snapshotId, const QString
 
     if (!result.success) {
         qWarning() << "[SqliteNoteRepository::getSnapshotById] Decryption failed for snapshot ID:" << snapshotId << result.errorMessage;
-        delete snapshot;
         if (wrongPassword) {
             *wrongPassword = true;
         }

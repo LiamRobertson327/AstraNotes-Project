@@ -13,6 +13,11 @@ class ISnapshot {
 public:
     virtual ~ISnapshot() = default;
 
+    // Ownership / lifetime:
+    // ISnapshot is a non-owning interface for snapshot data.
+    // Snapshot instances behave like value objects; callers should not
+    // manage them through parent-child ownership or shared ownership.
+
     // Accessors
     virtual qint64 snapshotId() const = 0;           // Unique snapshot ID
     virtual qint64 noteId() const = 0;               // Parent note ID

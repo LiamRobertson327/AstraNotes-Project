@@ -80,8 +80,7 @@ void MainWindow::resetEditorToBlankState() {
     }
 
     if (currentNote) {
-        delete currentNote;
-        currentNote = nullptr;
+        currentNote.reset();
     }
 
     sessionPassword.clear();
@@ -274,6 +273,8 @@ void MainWindow::updateSystemInfoDisplay() {
     }
 
     const double sizeMb = static_cast<double>(dbSizeBytes) / (1024.0 * 1024.0);
+    const int trashedNotes = trashService ? trashService->countTrashedNotes() : 0;
+    lines << QString("Trash: %1").arg(trashedNotes);
     lines << QString("Database: %1").arg(dbSizeBytes > 0 ? QString::number(sizeMb, 'f', 2) + " MB" : "0 MB");
 
     systemInfoLabel->setText(lines.join("\n"));
@@ -344,13 +345,10 @@ void MainWindow::updateSearchState(const QString &query) {
     currentSearchMatches.clear();
     currentSearchMatchIndex = -1;
 
-    highlightCurrentTitleSearch(query);
-    updateSavedNotesSearchState(query);
-
     QTextEdit *editor = activeSearchEditor();
     if (!editor || query.trimmed().isEmpty()) {
         if (searchMatchLabel) {
-            searchMatchLabel->setText("Search notes");
+            searchMatchLabel->setText("Search note content");
         }
         if (searchPrevButton) {
             searchPrevButton->setEnabled(false);
@@ -370,15 +368,6 @@ void MainWindow::updateSearchState(const QString &query) {
     while ((index = content.indexOf(needle, index, Qt::CaseInsensitive)) != -1) {
         currentSearchMatches.append(qMakePair(index, needle.size()));
         index += qMax(1, needle.size());
-    }
-
-    const bool titleMatches = titleBar && titleBar->text().contains(needle, Qt::CaseInsensitive);
-    int sidebarMatches = 0;
-    for (int i = 0; i < noteList->count(); ++i) {
-        QListWidgetItem *item = noteList->item(i);
-        if (!item->isHidden()) {
-            ++sidebarMatches;
-        }
     }
 
     if (!currentSearchMatches.isEmpty()) {
@@ -403,14 +392,10 @@ void MainWindow::updateSearchState(const QString &query) {
     }
 
     if (searchMatchLabel) {
-        if (!currentSearchMatches.isEmpty() && (titleMatches || sidebarMatches > 0)) {
-            searchMatchLabel->setText(QString("%1 in note, %2 note(s)").arg(currentSearchMatches.size()).arg(sidebarMatches));
-        } else if (!currentSearchMatches.isEmpty()) {
-            searchMatchLabel->setText(QString("%1 of %2").arg(currentSearchMatchIndex + 1).arg(currentSearchMatches.size()));
-        } else if (titleMatches || sidebarMatches > 0) {
-            searchMatchLabel->setText(QString("%1 note(s) matched").arg(sidebarMatches));
-        } else {
+        if (currentSearchMatches.isEmpty()) {
             searchMatchLabel->setText("No matches");
+        } else {
+            searchMatchLabel->setText(QString("%1 of %2").arg(currentSearchMatchIndex + 1).arg(currentSearchMatches.size()));
         }
     }
 }
@@ -488,7 +473,7 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
     }
 
     if (!currentNote) {
-        currentNote = new Note(currentTypeId, title);
+        currentNote = std::make_unique<Note>(currentTypeId, title);
     }
 
     currentNote->setTitle(title);
@@ -511,7 +496,11 @@ bool MainWindow::saveCurrentNote(bool createSnapshot) {
         saveIndicator->setStyleSheet("color: #4CAF50;");
 
         if (noteListController) {
-            noteListController->noteSaved(currentNote);
+            noteListController->noteSaved(currentNote.get());
+        }
+
+        if (savedNotesSearchBar) {
+            updateSavedNotesSearchState(savedNotesSearchBar->text());
         }
 
         if (createSnapshot) {
@@ -656,6 +645,10 @@ void MainWindow::loadNotesFromDatabase() {
     if (noteListController) {
         noteListController->reload();
     }
+
+    if (savedNotesSearchBar) {
+        updateSavedNotesSearchState(savedNotesSearchBar->text());
+    }
 }
 
 void MainWindow::loadNoteIntoEditor(qint64 noteId) {
@@ -670,7 +663,7 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
     bool needsPassword = false;
     bool wrongPassword = false;
     QString loadError;
-    Note *note = noteService ? noteService->loadNoteRobust(noteId, QString(), &needsPassword, &wrongPassword, &loadError) : nullptr;
+    std::unique_ptr<Note> note = noteService ? noteService->loadNoteRobust(noteId, QString(), &needsPassword, &wrongPassword, &loadError) : std::unique_ptr<Note>();
     if (!note) {
         qWarning() << "[MainWindow::loadNoteIntoEditor] Failed to load note with ID:" << noteId << loadError;
         return;
@@ -679,12 +672,10 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
     if (needsPassword) {
         QString enteredPassword;
         if (!promptForPassword("Decrypt Note", QString("Enter the password for '%1':").arg(note->title()), &enteredPassword)) {
-            delete note;
             return;
         }
 
-        Note *decryptedNote = noteService ? noteService->loadNoteRobust(noteId, enteredPassword, nullptr, &wrongPassword, &loadError) : nullptr;
-        delete note;
+        std::unique_ptr<Note> decryptedNote = noteService ? noteService->loadNoteRobust(noteId, enteredPassword, nullptr, &wrongPassword, &loadError) : std::unique_ptr<Note>();
         if (!decryptedNote) {
             if (wrongPassword) {
                 QMessageBox::warning(this, "Incorrect Password", "The password you entered could not decrypt this note.");
@@ -696,31 +687,28 @@ void MainWindow::loadNoteIntoEditor(qint64 noteId) {
         }
 
         sessionPassword = enteredPassword;
-        note = decryptedNote;
+        note = std::move(decryptedNote);
     } else {
         sessionPassword.clear();
     }
     
     // Update current note
-    if (currentNote) {
-        delete currentNote;
-    }
-    currentNote = note;
+    currentNote = std::move(note);
     isLoadingDocument = true;
     
     // Populate UI with note data
-    titleBar->setText(note->title());
-    writeEditor->setText(note->content());
-    readViewer->setText(note->content());
-    splitEditor->setText(note->content());
+    titleBar->setText(currentNote->title());
+    writeEditor->setText(currentNote->content());
+    readViewer->setText(currentNote->content());
+    splitEditor->setText(currentNote->content());
     if (secureToggle) {
         secureToggle->blockSignals(true);
-        secureToggle->setChecked(note->isSecured());
+        secureToggle->setChecked(currentNote->isSecured());
         secureToggle->blockSignals(false);
     }
 
     // Set the note type to show/hide appropriate buttons
-    setNoteType(note->typeId());
+    setNoteType(currentNote->typeId());
     updateEditorCounters();
     
     // Clear unsaved indicator
@@ -748,14 +736,13 @@ void MainWindow::createNewNote(const QString &typeId) {
         if (currentNote->noteId() > 0) {
             createSnapshotForCurrentNote();
         }
-        delete currentNote;
     }
     
     // Create a new note with the selected type via NoteService
     if (noteService) {
         currentNote = noteService->createNote(typeId, "");
     } else {
-        currentNote = new Note(typeId, "");
+        currentNote = std::make_unique<Note>(typeId, "");
     }
     sessionPassword.clear();
     isLoadingDocument = true;
@@ -860,7 +847,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QHBoxLayout *headerLayout = new QHBoxLayout();
     searchBar = new QLineEdit();
     searchBar->setObjectName("searchBar");
-    searchBar->setPlaceholderText("Search notes...");
+    searchBar->setPlaceholderText("Search note content...");
 
     searchPrevButton = new QPushButton("<");
     searchPrevButton->setFixedWidth(36);
@@ -870,7 +857,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     searchNextButton->setFixedWidth(36);
     searchNextButton->setEnabled(false);
 
-    searchMatchLabel = new QLabel("Search notes");
+    searchMatchLabel = new QLabel("Search note content");
     searchMatchLabel->setObjectName("searchMatchLabel");
     
     newButton = new QPushButton("+ New Note");
@@ -923,6 +910,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     listTitle = new QLabel("Saved Notes");
     listTitle->setObjectName("listTitle");
+
+    savedNotesSearchBar = new QLineEdit();
+    savedNotesSearchBar->setObjectName("savedNotesSearchBar");
+    savedNotesSearchBar->setPlaceholderText("Search saved notes...");
+    savedNotesSearchBar->setClearButtonEnabled(true);
     
     noteList = new QListWidget();
     noteList->setObjectName("noteList");
@@ -930,6 +922,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     noteList->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     leftTileLayout->addWidget(listTitle);
+    leftTileLayout->addWidget(savedNotesSearchBar);
     leftTileLayout->addWidget(noteList);
 
     QFrame *systemInfoBox = new QFrame();
@@ -1132,6 +1125,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         searchBar->setFocus();
     });
 
+    connect(searchBar, &QLineEdit::returnPressed, [this](){
+        navigateSearchMatch(1);
+    });
+
+    connect(savedNotesSearchBar, &QLineEdit::textChanged, [this](const QString &text){
+        updateSavedNotesSearchState(text);
+    });
+
     connect(searchPrevButton, &QPushButton::clicked, [this](){
         navigateSearchMatch(-1);
     });
@@ -1320,6 +1321,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     if (noteListController) {
         noteListController->reload();
     }
+    if (savedNotesSearchBar) {
+        updateSavedNotesSearchState(savedNotesSearchBar->text());
+    }
     updateSystemInfoDisplay();
     // Phase 8: Load retention settings and purge behavior
     QSettings s;
@@ -1365,7 +1369,7 @@ MainWindow::~MainWindow() {
         delete noteRepository;
     }
     if (currentNote) {
-        delete currentNote;
+        currentNote.reset();
     }
 }
 
@@ -1480,9 +1484,9 @@ void MainWindow::showSnapshotHistoryDialog() {
 
     qDebug() << "[MainWindow::showSnapshotHistoryDialog] Showing snapshot history for note ID:" << currentNote->noteId();
 
-    QVector<Snapshot*> snapshots = snapshotService ? snapshotService->getSnapshotsByNoteId(currentNote->noteId()) : QVector<Snapshot*>();
+    auto snapshots = snapshotService ? snapshotService->getSnapshotsByNoteId(currentNote->noteId()) : std::vector<std::unique_ptr<Snapshot>>();
 
-    if (snapshots.isEmpty()) {
+    if (snapshots.empty()) {
         QMessageBox::information(this, "Snapshot History", "No snapshots yet for this note.");
         return;
     }
@@ -1498,7 +1502,8 @@ void MainWindow::showSnapshotHistoryDialog() {
     // Create a list widget to show snapshots
     QListWidget *snapshotList = new QListWidget();
 
-    for (Snapshot *snapshot : snapshots) {
+    for (const auto &snapshotPtr : snapshots) {
+        Snapshot *snapshot = snapshotPtr.get();
         QListWidgetItem *item = new QListWidgetItem(snapshot->displayText());
         item->setData(Qt::UserRole, snapshot->snapshotId());
         snapshotList->addItem(item);
@@ -1555,10 +1560,7 @@ void MainWindow::showSnapshotHistoryDialog() {
 
     dialog->exec();
 
-    // Clean up
-    for (Snapshot *snap : snapshots) {
-        delete snap;
-    }
+    // Clean up: unique_ptrs will automatically free snapshots.
     delete dialog;
 }
 
@@ -1572,7 +1574,7 @@ void MainWindow::onRevertToSnapshot(qint64 snapshotId) {
 
     qDebug() << "[MainWindow::onRevertToSnapshot] Reverting to snapshot ID:" << snapshotId;
     QString revertError;
-    Snapshot *restored = snapshotService->revertToSnapshot(*currentNote, snapshotId, sessionPassword, &revertError);
+    auto restored = snapshotService->revertToSnapshot(*currentNote, snapshotId, sessionPassword, &revertError);
     if (!restored) {
         if (revertError == "Incorrect password for snapshot") {
             QString enteredPassword;
@@ -1614,7 +1616,7 @@ void MainWindow::onRevertToSnapshot(qint64 snapshotId) {
 
     qDebug() << "[MainWindow::onRevertToSnapshot] Reverted to snapshot ID:" << snapshotId;
 
-    delete restored;
+    // restored is a unique_ptr and will be cleaned up automatically
 
     QMessageBox::information(this, "Snapshot Restored", "Note reverted to selected snapshot. Review and save to confirm.");
 }
@@ -1629,15 +1631,16 @@ void MainWindow::showTrashDialog() {
     connect(&dlg, &TrashDialog::changesApplied, this, [this]() {
         // Refresh sidebar and current note state after actions
         if (noteListController) noteListController->reload();
+        if (savedNotesSearchBar) {
+            updateSavedNotesSearchState(savedNotesSearchBar->text());
+        }
         updateSystemInfoDisplay();
         if (currentNote && currentNote->noteId() > 0) {
             // If current note was restored/purged, reload
-            Note *reloaded = noteService ? noteService->loadNote(currentNote->noteId()) : nullptr;
+            std::unique_ptr<Note> reloaded = noteService ? noteService->loadNote(currentNote->noteId()) : std::unique_ptr<Note>();
             if (!reloaded) {
                 // Note may have been purged; reset the editor to the default blank state
                 resetEditorToBlankState();
-            } else {
-                delete reloaded; // keep current in-memory until user reloads
             }
         }
     });

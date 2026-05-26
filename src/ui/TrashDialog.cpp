@@ -3,6 +3,8 @@
 #include "../model/Note.h"
 #include <QDateTime>
 #include <QMessageBox>
+#include <memory>
+#include <vector>
 
 TrashDialog::TrashDialog(ITrashService *trashService, int retentionDays_, QWidget *parent)
     : QDialog(parent), trashService(trashService), retentionDays(retentionDays_) {
@@ -38,9 +40,13 @@ TrashDialog::TrashDialog(ITrashService *trashService, int retentionDays_, QWidge
 
 void TrashDialog::populateList() {
     listWidget->clear();
-    QVector<Note*> trashed = trashService->getTrashedNotes();
+    std::vector<std::unique_ptr<Note>> trashed = trashService->getTrashedNotes();
 
-    for (Note *n : trashed) {
+    for (const std::unique_ptr<Note> &n : trashed) {
+        if (!n) {
+            continue;
+        }
+
         QString title = n->title().isEmpty() ? "(untitled)" : n->title();
         QString prefix;
         if (n->isSecured()) {
@@ -60,8 +66,6 @@ void TrashDialog::populateList() {
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
         item->setCheckState(Qt::Unchecked);
         item->setData(Qt::UserRole, QVariant::fromValue(n->noteId()));
-
-        delete n; // Caller ownership transferred to us; free the Note pointers
     }
 }
 

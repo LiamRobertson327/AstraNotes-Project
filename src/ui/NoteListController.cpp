@@ -6,6 +6,8 @@
 #include <QAbstractItemView>
 #include <QScrollBar>
 #include <QDebug>
+#include <vector>
+#include <memory>
 
 NoteListController::NoteListController(QListWidget *noteList, INoteService *noteService, QObject *parent)
     : QObject(parent),
@@ -42,17 +44,17 @@ void NoteListController::loadPage(int offset) {
 
     m_loading = true;
 
-    QVector<Note *> page = m_noteService->searchByTitlePaged(QString(), m_pageSize, offset);
+    std::vector<std::unique_ptr<Note>> page = m_noteService->searchByTitlePaged(QString(), m_pageSize, offset);
     qDebug() << "[NoteListController::loadPage] Loaded" << page.size() << "notes for offset" << offset;
 
-    for (Note *note : page) {
+    for (const auto &notePtr : page) {
+        Note *note = notePtr.get();
         if (!note) {
             continue;
         }
 
         QListWidgetItem *item = new QListWidgetItem(note->displayText(), m_noteList);
         item->setData(Qt::UserRole, note->noteId());
-        delete note;
     }
 
     if (page.size() < m_pageSize) {

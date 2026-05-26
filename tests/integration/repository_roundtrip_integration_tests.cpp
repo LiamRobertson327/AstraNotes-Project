@@ -1,6 +1,8 @@
 #include <QtTest>
 #include <QTemporaryDir>
 #include <QDir>
+#include <vector>
+#include <memory>
 
 #include "../../src/model/Note.h"
 #include "../../src/model/Snapshot.h"
@@ -34,12 +36,10 @@ private slots:
         QCOMPARE(repo.countActiveNotesByType("markdown"), 1);
         QCOMPARE(repo.countTitleMatches("Project"), 2);
 
-        QVector<Note*> page = repo.searchByTitlePaged("Project", 10, 0);
+        std::vector<std::unique_ptr<Note>> page = repo.searchByTitlePaged("Project", 10, 0);
         QCOMPARE(page.size(), 2);
         QVERIFY(page[0]->title().contains("Project"));
         QVERIFY(page[1]->title().contains("Project"));
-
-        qDeleteAll(page);
     }
 
     void snapshotRoundTrip_preservesLatestContent() {
@@ -64,18 +64,15 @@ private slots:
         Snapshot second(note.noteId(), note.title(), note.content());
         QVERIFY(repo.saveSnapshot(second));
 
-        QVector<Snapshot*> snapshots = repo.getSnapshotsByNoteId(note.noteId());
+        std::vector<std::unique_ptr<Snapshot>> snapshots = repo.getSnapshotsByNoteId(note.noteId());
         QCOMPARE(snapshots.size(), 2);
         QCOMPARE(snapshots[0]->content(), QString("version two"));
         QCOMPARE(snapshots[1]->content(), QString("version one"));
 
-        Snapshot* byId = repo.getSnapshotById(second.snapshotId());
+        std::unique_ptr<Snapshot> byId = repo.getSnapshotById(second.snapshotId());
         QVERIFY(byId != nullptr);
         QCOMPARE(byId->title(), note.title());
         QCOMPARE(byId->content(), QString("version two"));
-
-        qDeleteAll(snapshots);
-        delete byId;
     }
 };
 

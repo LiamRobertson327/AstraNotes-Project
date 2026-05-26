@@ -2,7 +2,8 @@
 #define ITRASHSERVICE_H
 
 #include <QString>
-#include <QVector>
+#include <memory>
+#include <vector>
 
 class Note;
 
@@ -30,10 +31,12 @@ public:
     /// @param retentionDays  How many days a trashed note is kept before auto-purge
     virtual void purgeOldTrashedNotes(int retentionDays = 14) = 0;
 
-    /// Retrieve all trashed notes. Caller owns the returned Note objects.
+    /// Retrieve all trashed notes.
+    /// The returned vector owns the notes via std::unique_ptr, so callers
+    /// do not manually delete the items.
     /// @param limit          Maximum number of notes to return
     /// @param offset         Pagination offset
-    virtual QVector<Note *> getTrashedNotes(int limit = 100, int offset = 0) = 0;
+    virtual std::vector<std::unique_ptr<Note>> getTrashedNotes(int limit = 100, int offset = 0) = 0;
 
     /// Get the count of trashed notes.
     /// Reserved for possible future badge or summary UI.

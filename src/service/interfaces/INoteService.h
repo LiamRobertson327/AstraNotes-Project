@@ -3,6 +3,8 @@
 
 #include <QString>
 #include <QVector>
+#include <vector>
+#include <memory>
 
 class Note;
 
@@ -19,8 +21,8 @@ public:
     /// @param password         Password for encrypted notes (empty for plaintext)
     /// @param wrongPassword    Set to true if decryption failed due to wrong password
     /// @param errorMessage     User-facing error message if load fails
-    virtual Note *loadNote(qint64 noteId, const QString &password = QString(),
-                           bool *wrongPassword = nullptr, QString *errorMessage = nullptr) = 0;
+    virtual std::unique_ptr<Note> loadNote(qint64 noteId, const QString &password = QString(),
+                                           bool *wrongPassword = nullptr, QString *errorMessage = nullptr) = 0;
 
     /// Save or update a note. Handles both plaintext and encrypted saves.
     /// @param note             Note to save (will update note ID and timestamps)
@@ -32,7 +34,7 @@ public:
     /// Create a new note with default values. Caller owns the returned Note.
     /// @param typeId           Plugin format ID (e.g., "plaintext", "markdown")
     /// @param title            Initial note title
-    virtual Note *createNote(const QString &typeId, const QString &title) = 0;
+    virtual std::unique_ptr<Note> createNote(const QString &typeId, const QString &title) = 0;
 
     /// Check if underlying storage is connected/available
     virtual bool isConnected() = 0;
@@ -40,14 +42,14 @@ public:
     /// Counts and paging helpers used by UI
     virtual int countActiveNotes() = 0;
     virtual int countActiveNotesByType(const QString &typeId) = 0;
-    virtual QVector<Note*> searchByTitlePaged(const QString &query, int pageSize, int offset) = 0;
+    virtual std::vector<std::unique_ptr<Note>> searchByTitlePaged(const QString &query, int pageSize, int offset) = 0;
     virtual bool trashNote(qint64 noteId) = 0;
 
     /// Robust loader that can indicate when password input is needed.
-    virtual Note *loadNoteRobust(qint64 noteId, const QString &password,
-                                 bool *needsPassword = nullptr,
-                                 bool *wrongPassword = nullptr,
-                                 QString *errorMessage = nullptr) = 0;
+    virtual std::unique_ptr<Note> loadNoteRobust(qint64 noteId, const QString &password,
+                                                 bool *needsPassword = nullptr,
+                                                 bool *wrongPassword = nullptr,
+                                                 QString *errorMessage = nullptr) = 0;
 };
 
 #endif // INOTESERVICE_H

@@ -2,6 +2,7 @@
 #include "../../src/service/impl/SnapshotService.h"
 #include "../../src/repository/SqliteNoteRepository.h"
 #include "../../src/model/Note.h"
+#include "../../src/model/Snapshot.h"
 
 class SnapshotServiceTests : public QObject {
     Q_OBJECT
@@ -30,10 +31,6 @@ private slots:
         svc.enforceSnapshotLimit(nid, 2);
         auto pruned = svc.getSnapshotsByNoteId(nid);
         QCOMPARE(pruned.size(), 2);
-
-        // Clean up allocated snapshots
-        qDeleteAll(snaps);
-        qDeleteAll(pruned);
     }
 };
 

@@ -1,6 +1,25 @@
 #include "model/Note.h"
 #include <QDebug>       //Provides an output stream for debugging information.
 
+namespace {
+QString displayTypeLabel(const QString &typeId) {
+    if (typeId.compare("plaintext", Qt::CaseInsensitive) == 0) {
+        return "PlainText";
+    }
+    if (typeId.compare("markdown", Qt::CaseInsensitive) == 0) {
+        return "Markdown";
+    }
+
+    if (typeId.isEmpty()) {
+        return "Unknown";
+    }
+
+    QString label = typeId;
+    label[0] = label[0].toUpper();
+    return label;
+}
+} // namespace
+
 Note::Note(QString noteTypeId, QString noteTitle)
     : m_typeId(std::move(noteTypeId)), m_title(std::move(noteTitle)) {
     m_createdAt = QDateTime::currentDateTimeUtc();
@@ -62,5 +81,8 @@ QString Note::displayText() const {
     if (m_isSecured) {
         t = QString::fromUtf8("🔒 ") + t;
     }
-    return t + "\n" + m_createdAt.toLocalTime().toString("yyyy-MM-dd HH:mm:ss");
+
+    const QString noteType = displayTypeLabel(m_typeId);
+    const QString createdAt = m_createdAt.toLocalTime().toString("yyyy-MM-dd HH:mm:ss");
+    return t + "\n" + QString("NoteType: %1\nDate Created: %2").arg(noteType, createdAt);
 }

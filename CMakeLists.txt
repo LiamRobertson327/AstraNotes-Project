@@ -5,12 +5,6 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(MSVC)
-    # Newer MSVC toolchains use -std:c++latest for C++23 and may break Qt 6.5's stdext lookup.
-    # Force-include a tiny compat header for all translation units.
-    add_compile_options("/FI${CMAKE_SOURCE_DIR}/src/compat/msvc_qt_compat.h")
-endif()
-
 # 1. Setup the Qt Path
 set(Qt6_DIR "C:/Qt/6.11.0/mingw_64/lib/cmake/Qt6")
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core Widgets Sql Test)
@@ -37,9 +31,16 @@ file(GLOB_RECURSE ASTRA_CORE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/logging/*.cpp"
 )
 
+# Include UI sources in AstraCore so test executables can link UI classes like MainWindow
 file(GLOB_RECURSE ASTRA_APP_UI_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/ui/*.cpp"
 )
+
+# Build UI as a separate static library so tests can link MainWindow without
+# duplicating MOC-generated symbols in AstraCore and the application target.
+add_library(AstraAppUI STATIC ${ASTRA_APP_UI_SOURCES})
+target_include_directories(AstraAppUI PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(AstraAppUI PRIVATE Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Sql AstraCore)
 
 # Build core library from shared sources so tests can link against implementation symbols.
 add_library(AstraCore STATIC ${ASTRA_CORE_SOURCES})
@@ -66,9 +67,7 @@ endif()
 qt_add_executable(AstraNotes
     WIN32 MACOSX_BUNDLE
     src/app/main.cpp
-    ${ASTRA_APP_UI_SOURCES}
-    src/ui/mainwindow.h
-    src/ui/mainwindow.ui
+    
     ${RESOURCE_FILES}
 )
 target_include_directories(AstraNotes PRIVATE
@@ -87,6 +86,9 @@ target_link_libraries(AstraNotes PRIVATE
     AstraCore
     OpenSSL::Crypto
 )
+
+# Link the UI library into the application
+target_link_libraries(AstraNotes PRIVATE AstraAppUI)
 
 
 qt_generate_deploy_app_script(

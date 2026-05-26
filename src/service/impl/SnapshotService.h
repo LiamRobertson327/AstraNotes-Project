@@ -3,6 +3,9 @@
 
 #include "../interfaces/ISnapshotService.h"
 
+#include <memory>
+#include <vector>
+
 class INoteRepository;
 class Note;
 class Snapshot;
@@ -17,19 +20,19 @@ public:
     // ISnapshotService implementation
     bool saveSnapshot(const Note &note, const QString &password = QString(),
                       QString *errorMessage = nullptr) override;
-    QVector<Snapshot *> getSnapshotsByNoteId(qint64 noteId) override;
-    Snapshot *getSnapshotById(qint64 snapshotId, const QString &password = QString(),
-                              bool *wrongPassword = nullptr) override;
+    std::vector<std::unique_ptr<Snapshot>> getSnapshotsByNoteId(qint64 noteId) override;
+    std::unique_ptr<Snapshot> getSnapshotById(qint64 snapshotId, const QString &password = QString(),
+                                              bool *wrongPassword = nullptr) override;
     bool deleteSnapshot(qint64 snapshotId) override;
     bool deleteOldestSnapshotForNote(qint64 noteId) override;
     void enforceSnapshotLimit(qint64 noteId, int maxSnapshots = 2) override;
 
     // Revert workflow: create a safety snapshot of the current note state,
     // then fetch and return the requested snapshot (decrypted if password provided).
-    // Returns a newly allocated Snapshot* (caller owns) or nullptr on error.
-    Snapshot *revertToSnapshot(class Note &currentNote, qint64 snapshotId,
-                               const QString &password = QString(),
-                               QString *errorMessage = nullptr) override;
+    // Returns a move-owned `unique_ptr<Snapshot>` or nullptr on error.
+    std::unique_ptr<Snapshot> revertToSnapshot(class Note &currentNote, qint64 snapshotId,
+                                               const QString &password = QString(),
+                                               QString *errorMessage = nullptr) override;
 
 private:
     INoteRepository *m_repository;

@@ -10,6 +10,11 @@ Small end-to-end checks for the core app plumbing.
 - `testRepositorySaveLoad` - saves a note to SQLite and loads it back by id.
 - `testSnapshotAndTrash` - creates a snapshot, trashes the note, and purges trashed rows.
 
+### `mainwindow_quick_tests.cpp` (new)
+Quick UI smoke coverage for the split search bars.
+- `searchBarsHaveIndependentState` - verifies the content search and saved-notes search have different placeholders and independent text state.
+- `enterAdvancesToNextContentMatch` - verifies Enter moves the content search to the next highlighted match.
+
 ### `trash_feature_smoke.cpp`
 Smoke coverage for the trash flow using the service layer.
 - `create_trash_restore_purge_flow` - saves a note, trashes it, restores it, then purges it.
@@ -43,6 +48,15 @@ Exercises the service and repository together.
 Exercises repository behavior across counts, search, and snapshots.
 - `titleSearchCountsAndTypes_roundTrip` - saves notes, checks active counts, type counts, title counts, and paged search results.
 - `snapshotRoundTrip_preservesLatestContent` - saves two snapshots, verifies newest-first retrieval, and reloads a snapshot by id.
+
+## Performance Tests
+
+### `nfr_performance_tests.cpp` (new)
+Benchmarks the documented NFR1/NFR2 targets against a 10,000-note dataset.
+- `saveLatency_under50ms` - verifies save latency stays under 50 ms.
+- `loadLatency_under100ms` - verifies load latency stays under 100 ms.
+- `titleSearchLatency_under200ms` - verifies title search counting stays under 200 ms.
+- `firstPageLoadLatency_under500ms` - verifies first-page pagination stays under 500 ms.
 
 ## Test Runner
 

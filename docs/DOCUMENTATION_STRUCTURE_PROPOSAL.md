@@ -40,7 +40,7 @@
 **Submission Requirement:** ✅ Requirements artifact (Professor rubric)  
 **Audience:** Stakeholders, defense panel, graders  
 **Content:** User personas, high-level features, success criteria  
-**Keep As-Is:** Yes
+**Keep As-Is:** Potentially Update
 
 ---
 
