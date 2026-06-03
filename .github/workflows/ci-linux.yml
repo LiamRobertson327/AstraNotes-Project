@@ -37,12 +37,24 @@ jobs:
           cd build
           cmake --build . --config Release
 
+      # --- DIAGNOSTIC STEP TO PROVE WHAT IS GOING ON ---
+      - name: Debug OpenSSL Version and Module Layout
+        run: |
+          echo "=== Check OpenSSL System Version ==="
+          openssl version
+          
+          echo "=== Check What CMake Deployed ==="
+          echo "build/tests directory contents:"
+          ls -la build/tests || true
+          
+          echo "build/tests/ossl-modules directory contents:"
+          ls -la build/tests/ossl-modules || true
+          
+          echo "=== Check System Provider Directories ==="
+          ls -la /usr/lib/x86_64-linux-gnu/ossl-modules || true
+          ls -la /usr/lib/ossl-modules || true
+
       - name: Run tests
         run: |
           cd build
-          
-          # --- FIXED ENVIRONMENT PATH ASSIGNMENT FOR UBUNTU 24.04 ---
-          export OPENSSL_MODULES=/usr/lib/x86_64-linux-gnu/ossl-modules
-          
-          # Run headless GUI tests safely
           xvfb-run ctest -j 2 --output-on-failure
