@@ -1,9 +1,10 @@
-name: Build and Release
+name: CI - Windows
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
       
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -42,29 +43,15 @@ jobs:
         run: |
           choco install openssl -y --no-progress
 
-      - name: Resolve OpenSSL Root
-        shell: pwsh
-        run: |
-          $opensslRoots = @(
-            "C:\Program Files\OpenSSL-Win64",
-            "C:\Program Files\OpenSSL"
-          )
-
-          $resolvedRoot = $opensslRoots | Where-Object { Test-Path (Join-Path $_ "include") -and Test-Path (Join-Path $_ "lib") } | Select-Object -First 1
-
-          if ($resolvedRoot) {
-            Write-Host "Resolved OpenSSL root: $resolvedRoot"
-            echo "OPENSSL_ROOT_DIR=$resolvedRoot" >> $env:GITHUB_ENV
-          } else {
-            Write-Warning "OpenSSL root not found in standard Windows locations; relying on CMake fallback lookup."
-          }
-
       - name: Configure and Build
         shell: pwsh
         run: |
+          # Clean workspace cache to ensure CMake tests your updated logic natively
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
           mkdir build
           cd build
-          # Explicitly tell CMake to use the Visual Studio 'cl' compiler
+          
+          # Built cleanly with arguments arrays to eliminate backtick parse errors
           $cmakeArgs = @(
             '-G', 'Ninja',
             '-DCMAKE_C_COMPILER=cl',
@@ -72,10 +59,6 @@ jobs:
             '-DCMAKE_BUILD_TYPE=Release',
             '-DCMAKE_PREFIX_PATH=' + $env:QT_ROOT_DIR
           )
-
-          if ($env:OPENSSL_ROOT_DIR) {
-            $cmakeArgs += '-DOPENSSL_ROOT_DIR=' + $env:OPENSSL_ROOT_DIR
-          }
 
           cmake @cmakeArgs ..
           cmake --build . --config Release
@@ -119,8 +102,6 @@ jobs:
             throw "windeployqt.exe not found."
           }
 
-          # CRITICAL FIX: Locate and invoke Visual Studio's environment batch file 
-          # inside the PowerShell session so windeployqt can discover the compiler runtime tools.
           $vcvars = Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio" -Recurse -Filter "vcvars64.bat" | 
             Select-Object -First 1 -ExpandProperty FullName
           
@@ -128,7 +109,6 @@ jobs:
             Write-Host "Initializing MSVC Environment via: $vcvars" -ForegroundColor Cyan
             cmd.exe /c " `"$vcvars`" && powershell -Command `"& `"$deployToolPath`" --release --no-translations --compiler-runtime `"$stagedExe`"`" "
           } else {
-            # Fallback if vcvars64.bat isn't discovered where expected
             & $deployToolPath --release --no-translations --compiler-runtime "$stagedExe"
           }
 
@@ -136,17 +116,32 @@ jobs:
             throw "windeployqt failed with exit code $LASTEXITCODE"
           }
 
-          # Stage OpenSSL Dependency
+          # Clean loop discovery for OpenSSL to bypass runtime pipeline expression limitations
           $opensslSearchRoots = @(
             "C:\Program Files\OpenSSL-Win64\bin",
             "C:\Program Files\OpenSSL\bin",
             "C:\Strawberry\c\bin"
           )
-          $opensslBin = $opensslSearchRoots | Where-Object { Test-Path (Join-Path $_ "libcrypto-3-x64.dll") } | Select-Object -First 1
+          $opensslBin = $null
+          foreach ($root in $opensslSearchRoots) {
+            if (Test-Path $root) {
+              $cryptoDll = Join-Path $root "libcrypto-3-x64.dll"
+              if (Test-Path $cryptoDll) {
+                $opensslBin = $root
+                break
+              }
+            }
+          }
 
           if (-not $opensslBin) {
             $pathDirs = ($env:PATH -split ';') | Where-Object { $_ -and (Test-Path $_) }
-            $opensslBin = $pathDirs | Where-Object { Test-Path (Join-Path $_ "libcrypto-3-x64.dll") } | Select-Object -First 1
+            foreach ($p in $pathDirs) {
+              $cryptoDll = Join-Path $p "libcrypto-3-x64.dll"
+              if (Test-Path $cryptoDll) {
+                $opensslBin = $p
+                break
+              }
+            }
           }
 
           if (-not $opensslBin) {
@@ -165,15 +160,12 @@ jobs:
           $msvcDlls = @('VCRUNTIME140.dll','VCRUNTIME140_1.dll','MSVCP140.dll','MSVCP140_1.dll','MSVCP140_2.dll')
           foreach ($dll in $msvcDlls) {
             $found = $null
-
-            # Common system locations
             $systemLocations = @('C:\Windows\System32','C:\Windows\SysWOW64')
             foreach ($loc in $systemLocations) {
               $candidate = Join-Path $loc $dll
               if (Test-Path $candidate) { $found = $candidate; break }
             }
 
-            # Search PATH if not found yet
             if (-not $found) {
               $pathDirs = ($env:PATH -split ';') | Where-Object { $_ -and (Test-Path $_) }
               foreach ($p in $pathDirs) {
@@ -182,7 +174,6 @@ jobs:
               }
             }
 
-            # Fallback: search Visual Studio folders (might be slow but reliable on runners)
             if (-not $found) {
               $vsRoots = Get-ChildItem 'C:\Program Files\Microsoft Visual Studio' -Directory -ErrorAction SilentlyContinue
               foreach ($r in $vsRoots) {
@@ -202,12 +193,12 @@ jobs:
       - name: Zip runtime bundle
         shell: pwsh
         run: |
-          # Step directly into the distribution folder to keep zip internal structures clean
           Push-Location dist
           7z a ../AstraNotes-Windows.zip AstraNotes
           Pop-Location
 
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: AstraNotes-Windows.zip
