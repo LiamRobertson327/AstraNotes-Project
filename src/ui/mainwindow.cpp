@@ -1,4 +1,4 @@
-#include "MainWindow.h"
+#include "mainwindow.h"
 
 #include "TrashDialog.h"
 #include "SettingsDialog.h"
