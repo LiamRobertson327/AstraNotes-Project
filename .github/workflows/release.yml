@@ -118,9 +118,10 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          # Force Chocolatey to install OpenSSL 3.4.1 specifically
-          choco install openssl --version=3.4.1 -y --no-progress
-
+          # Use the pre-installed vcpkg to install OpenSSL 3
+          vcpkg install openssl:x64-windows
+          # Export the path based on the standard vcpkg location on GitHub runners
+          echo "OPENSSL_ROOT_DIR=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows" >> $env:GITHUB_ENV
 
       # ==========================================
       # 2. COMPILATION LAYER
@@ -149,13 +150,15 @@ jobs:
         run: |
           if (Test-Path build) { Remove-Item -Recurse -Force build }
           mkdir build && cd build
+          # Add the vcpkg toolchain file to cmake - THIS IS THE SECRET SAUCE
           $cmakeArgs = @(
             '-G', 'Ninja',
             '-DCMAKE_C_COMPILER=cl',
             '-DCMAKE_CXX_COMPILER=cl',
             '-DCMAKE_BUILD_TYPE=Release',
             '-DCMAKE_PREFIX_PATH=' + $env:QT_ROOT_DIR,
-            '-DOPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64'
+            '-DOPENSSL_ROOT_DIR=' + $env:OPENSSL_ROOT_DIR,
+            '-DCMAKE_TOOLCHAIN_FILE=' + $env:VCPKG_INSTALLATION_ROOT + '/scripts/buildsystems/vcpkg.cmake'
           )
           cmake @cmakeArgs ..
           cmake --build . --config Release
@@ -216,27 +219,15 @@ jobs:
           OUTPUT: AstraNotes-Linux-x86_64.AppImage
           LD_LIBRARY_PATH: /home/runner/openssl-3.4.1/lib64:/home/runner/openssl-3.4.1/lib
         run: |
-          # Create a structured directory for bundling
           mkdir -p appdir/usr/bin
+          # Explicitly copy your binary
+          cp build/AstraNotes appdir/usr/bin/AstraNotes
           
-          # Find the compiled binary executable dynamically
-          EXE_PATH=$(find build -type f -name "AstraNotes" | head -n 1)
-          if [ -z "$EXE_PATH" ]; then EXE_PATH=$(find build -type f -executable -not -name "*.so*" | head -n 1); fi
-          cp "$EXE_PATH" appdir/usr/bin/AstraNotes
+          # Manually create the AppRun file if linuxdeploy misses it
+          echo -e '#!/bin/sh\nexec "$(dirname "$0")/usr/bin/AstraNotes" "$@"' > appdir/AppRun
+          chmod +x appdir/AppRun
           
-          # Force copy your source-compiled OpenSSL 3.4.1 libraries directly into the bundle
-          mkdir -p appdir/usr/lib
-          cp /home/runner/openssl-3.4.1/lib64/libcrypto.so.3 appdir/usr/lib/
-          cp /home/runner/openssl-3.4.1/lib64/libssl.so.3 appdir/usr/lib/
-          mkdir -p appdir/usr/lib/ossl-modules
-          cp /home/runner/openssl-3.4.1/lib64/ossl-modules/* appdir/usr/lib/ossl-modules/
-
-          # Provide placeholder Desktop integrations required by linuxdeploy
-          echo -e "[Desktop Entry]\nType=Application\nName=AstraNotes\nExec=AstraNotes\nIcon=astranotes\nCategories=Utility;" > appdir/AstraNotes.desktop
-          wget -q https://raw.githubusercontent.com/at-fonts/art-fonts/master/art.png -O appdir/astranotes.png || touch appdir/astranotes.png
-          
-          # Execute linuxdeploy using its Qt engine plugin to bundle all necessary Qt shared libraries (.so files)
-          export QMAKE=$(which qmake)
+          # Continue with linuxdeploy to bundle libraries
           linuxdeploy --appdir appdir --plugin qt --output appimage
 
       # --- macOS PACKAGING ---
