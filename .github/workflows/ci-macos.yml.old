@@ -1,0 +1,36 @@
+name: CI - macOS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Homebrew packages
+        run: |
+          brew update
+          brew install qt@6 openssl@3 cmake ninja
+
+      - name: Configure
+        run: |
+          QT_PREFIX=$(brew --prefix qt@6)
+          OPENSSL_PREFIX=$(brew --prefix openssl@3)
+          mkdir -p build
+          cd build
+          cmake -S .. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${QT_PREFIX}/lib/cmake/Qt6" -DOPENSSL_ROOT_DIR="${OPENSSL_PREFIX}"
+
+      - name: Build
+        run: |
+          cd build
+          cmake --build . --config Release
+
+      - name: Run tests
+        run: |
+          cd build
+          ctest -j 2 --output-on-failure      

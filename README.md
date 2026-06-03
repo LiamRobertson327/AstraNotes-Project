@@ -98,5 +98,31 @@ Download the latest release found [here](https://github.com/LiamRobertson327/Ast
 
 Note: The application will default to be a markdown note, but you may change this to plaintext by clicking the "+ New Note" button and selecting Plain Text.
 
+## 🔧 Build from source (cross-platform)
+These instructions cover building the project from source on Windows, macOS, and Linux. The project uses CMake and Qt6. You can provide Qt via `CMAKE_PREFIX_PATH` or `Qt6_DIR`.
+
+- Install dependencies:
+    - Qt 6 (Qt6 Widgets, Core, Sql, Test)
+    - CMake >= 3.19
+    - A C++23 toolchain (MSVC / clang / gcc)
+    - OpenSSL (system or Homebrew on macOS)
+
+- Configure and build (example; use a clean `build/` directory):
+
+```powershell
+mkdir build
+cd build
+cmake -S .. -B . -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Release
+ctest -j 4 --output-on-failure
+```
+
+- Notes per platform:
+    - Windows: set `CMAKE_PREFIX_PATH` to your Qt install folder or set `Qt6_DIR` to the `lib/cmake/Qt6` path. For MSYS2/MinGW you can set `OPENSSL_ROOT_DIR` to your MSYS2 prefix (e.g. `C:/msys64/ucrt64`).
+    - macOS: if you installed OpenSSL via Homebrew, CMake will try `/opt/homebrew/opt/openssl@3` or `/usr/local/opt/openssl@3`; otherwise set `OPENSSL_ROOT_DIR`.
+    - Linux: install Qt6 development packages from your distro or provide `CMAKE_PREFIX_PATH` to a Qt installation.
+
+If you need a GUI bundle on macOS or Windows installers, use standard Qt deployment tools (`macdeployqt`, `windeployqt`) or CI packaging workflows. The top-level `CMakeLists.txt` avoids hardcoded Windows-only Qt paths and prefers environment/CMake-provided locations.
+
 ## Credits
 * **Qt License**: [Obligations of the GPL and LGPL](https://www.qt.io/development/open-source-lgpl-obligations) by Qt.

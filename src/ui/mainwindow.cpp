@@ -1,4 +1,4 @@
-#include "MainWindow.h"
+#include "mainwindow.h"
 
 #include "TrashDialog.h"
 #include "SettingsDialog.h"
@@ -814,10 +814,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
         // Phase 4: Initialize SQLite repository for persistence
     // Store database file in the same directory as the executable
-    QString appDir = QApplication::applicationDirPath();
-    QString dbPath = appDir + "/notes.db";
+    // QString appDir = QApplication::applicationDirPath();
+    // QString dbPath = appDir + "/notes.db";
+
+    QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dataDir);
+    QString dbPath = dataDir + "/notes.db";
+    qDebug() << "[MainWindow] Database path:" << dbPath;
+
     databasePath = dbPath;
-    
     qDebug() << "[MainWindow] Database path:" << dbPath;
     
         noteRepository = new SqliteNoteRepository(dbPath);
