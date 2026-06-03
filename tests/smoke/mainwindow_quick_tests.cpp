@@ -4,7 +4,7 @@
 #include <QtWidgets/QTextEdit>
 #include <QtWidgets/QStackedWidget>
 
-#include "../../src/ui/MainWindow.h"
+#include "../../src/ui/mainwindow.h"
 
 class MainWindowQuickTests : public QObject {
     Q_OBJECT
