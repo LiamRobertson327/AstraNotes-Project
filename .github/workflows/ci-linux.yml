@@ -37,10 +37,25 @@ jobs:
           cd build
           cmake --build . --config Release
 
+      # --- CRITICAL FIX: PHYSICAL DEPLOYMENT OF PROVIDERS ---
+      - name: Setup OpenSSL Modules for Test Execution
+        run: |
+          # 1. Force provision the target folder expected by EncryptionService
+          mkdir -p build/tests/ossl-modules
+
+          # 2. Extract standard Ubuntu system architecture patterns dynamically
+          if [ -d "/usr/lib/x86_64-linux-gnu/ossl-modules" ]; then
+            cp -r /usr/lib/x86_64-linux-gnu/ossl-modules/* build/tests/ossl-modules/
+            echo "Successfully deployed modules from x86_64 structure."
+          elif [ -d "/usr/lib/ossl-modules" ]; then
+            cp -r /usr/lib/ossl-modules/* build/tests/ossl-modules/
+            echo "Successfully deployed modules from standard structure."
+          else
+            echo "WARNING: System engine directory could not be discovered via standard paths!"
+          fi
+
       - name: Run tests
         run: |
           cd build
-          # Checks both Ubuntu 22.04 and 24.04 module structures dynamically
-          export OPENSSL_MODULES=/usr/lib/ossl-modules:/usr/lib/x86_64-linux-gnu/ossl-modules
-          
+          # Execute headless GUI tests inside a clean virtual frame-buffer instance
           xvfb-run ctest -j 2 --output-on-failure
