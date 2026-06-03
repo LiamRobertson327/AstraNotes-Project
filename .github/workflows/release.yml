@@ -117,9 +117,15 @@ jobs:
       - name: Set up VCPKG binary cache
         shell: pwsh
         run: |
-          # Define the path where vcpkg will look for/store its cached binaries
+          # 1. Define and CREATE the directory
           $cachePath = Join-Path $env:GITHUB_WORKSPACE "vcpkg_cache"
+          New-Item -ItemType Directory -Force -Path $cachePath | Out-Null
+          
+          # 2. Set the environment variable
           echo "VCPKG_DEFAULT_BINARY_CACHE=$cachePath" >> $env:GITHUB_ENV
+          
+          # 3. Suppress the VCPKG_ROOT warning by unsetting the conflicting variable
+          echo "VCPKG_ROOT=" >> $env:GITHUB_ENV
 
       - name: Cache vcpkg binaries
         uses: actions/cache@v4
@@ -243,8 +249,6 @@ jobs:
           cp build/AstraNotes appdir/usr/bin/AstraNotes
           
           # Create a minimal .desktop file
-          cat <<EOF > appdir/usr/share/applications/AstraNotes.desktop
-          # Update this part of your YAML step:
           cat <<EOF > appdir/usr/share/applications/AstraNotes.desktop
           [Desktop Entry]
           Name=AstraNotes
