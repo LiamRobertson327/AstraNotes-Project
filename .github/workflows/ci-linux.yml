@@ -16,7 +16,7 @@ jobs:
         run: |
           sudo apt-get update
           # Added libxcb-cursor0 for Qt 6.5 xcb engine and xvfb for running headless GUI tests
-          sudo apt-get install -y build-essential cmake ninja-build pkg-config libssl-dev libxkbcommon-dev libgl1-mesa-dev libxcb-cursor0 xvfb
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config perl curl libxkbcommon-dev libgl1-mesa-dev libxcb-cursor0 xvfb
 
       - name: Install Qt 6.5 (jurplel/install-qt-action)
         uses: jurplel/install-qt-action@v3
@@ -25,12 +25,28 @@ jobs:
           host: 'linux'
           target: 'desktop'
 
+      - name: Install OpenSSL 3.4.1 from source
+        run: |
+          set -euo pipefail
+          OPENSSL_VERSION=3.4.1
+          OPENSSL_PREFIX="$HOME/openssl-$OPENSSL_VERSION"
+          curl -LO "https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz"
+          tar -xzf "openssl-$OPENSSL_VERSION.tar.gz"
+          cd "openssl-$OPENSSL_VERSION"
+          ./Configure linux-x86_64 --prefix="$OPENSSL_PREFIX" --openssldir="$OPENSSL_PREFIX/ssl" shared no-tests
+          make -j"$(nproc)"
+          make install_sw
+          echo "OPENSSL_ROOT_DIR=$OPENSSL_PREFIX" >> "$GITHUB_ENV"
+          echo "OPENSSL_MODULES=$OPENSSL_PREFIX/lib/ossl-modules" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$OPENSSL_PREFIX/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          echo "$OPENSSL_PREFIX/bin" >> "$GITHUB_PATH"
+
       - name: Configure
         run: |
           QT_PREFIX=$(dirname "$(dirname "$(which qmake)" )") || true
           mkdir -p build
           cd build
-          cmake -S .. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${QT_PREFIX}/lib/cmake/Qt6"
+          cmake -S .. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${QT_PREFIX}/lib/cmake/Qt6" -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR"
 
       - name: Build
         run: |
