@@ -131,13 +131,17 @@ endif()
 target_link_libraries(AstraNotes PRIVATE AstraAppUI)
 
 
-qt_generate_deploy_app_script(
-    TARGET AstraNotes
-    OUTPUT_SCRIPT deploy_script
-    NO_UNSUPPORTED_PLATFORM_ERROR
-)
+if(COMMAND qt_generate_deploy_app_script)
+    qt_generate_deploy_app_script(
+        TARGET AstraNotes
+        OUTPUT_SCRIPT deploy_script
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
 
-install(SCRIPT ${deploy_script})
+    install(SCRIPT ${deploy_script})
+else()
+    message(STATUS "qt_generate_deploy_app_script not available; skipping deploy script generation on this platform.")
+endif()
 
 enable_testing()
 
