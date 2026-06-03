@@ -1,0 +1,207 @@
+name: CI - Windows
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+      
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.8.3'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+
+      - name: Set up MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Remove MinGW from PATH
+        # This prevents the 'ld.exe' error by hiding MinGW from CMake
+        shell: pwsh
+        run: |
+          $path = $env:PATH -split ';' | Where-Object { $_ -notlike "*mingw*" }
+          $path = $path -join ';'
+          echo "PATH=$path" >> $env:GITHUB_ENV
+
+      - name: Install OpenSSL
+        shell: pwsh
+        run: |
+          choco install openssl -y --no-progress
+
+      - name: Configure and Build
+        shell: pwsh
+        run: |
+          # Clean workspace cache to ensure CMake tests your updated logic natively
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
+          mkdir build
+          cd build
+          
+          # Built cleanly with arguments arrays to eliminate backtick parse errors
+          $cmakeArgs = @(
+            '-G', 'Ninja',
+            '-DCMAKE_C_COMPILER=cl',
+            '-DCMAKE_CXX_COMPILER=cl',
+            '-DCMAKE_BUILD_TYPE=Release',
+            '-DCMAKE_PREFIX_PATH=' + $env:QT_ROOT_DIR
+          )
+
+          cmake @cmakeArgs ..
+          cmake --build . --config Release
+
+      - name: Run Smoke Tests
+        shell: pwsh
+        run: |
+          cd build
+          ctest -C Release --output-on-failure
+
+      - name: Stage Runtime Bundle (inline)
+        shell: pwsh
+        run: |
+          $repoRoot = Get-Location
+          $buildDir = Join-Path $repoRoot "build"
+          $bundleDir = Join-Path $repoRoot "dist/AstraNotes"
+
+          if (Test-Path $bundleDir) {
+            Remove-Item -Recurse -Force $bundleDir
+          }
+          New-Item -ItemType Directory -Path $bundleDir | Out-Null
+
+          $exePath = Get-ChildItem -Path $buildDir -Recurse -Filter "AstraNotes.exe" |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $exePath) {
+            throw "AstraNotes.exe not found in build output."
+          }
+
+          $stagedExe = Join-Path $bundleDir "AstraNotes.exe"
+          Copy-Item -LiteralPath $exePath -Destination $stagedExe -Force
+
+          $deployTool = Get-Command windeployqt -ErrorAction SilentlyContinue
+          if (-not $deployTool) {
+            $deployToolPath = Get-ChildItem -Path "$env:QT_ROOT_DIR" -Recurse -Filter "windeployqt.exe" |
+              Select-Object -First 1 -ExpandProperty FullName
+          } else {
+            $deployToolPath = $deployTool.Source
+          }
+
+          if (-not $deployToolPath) {
+            throw "windeployqt.exe not found."
+          }
+
+          $vcvars = Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio" -Recurse -Filter "vcvars64.bat" | 
+            Select-Object -First 1 -ExpandProperty FullName
+          
+          if ($vcvars) {
+            Write-Host "Initializing MSVC Environment via: $vcvars" -ForegroundColor Cyan
+            cmd.exe /c " `"$vcvars`" && powershell -Command `"& `"$deployToolPath`" --release --no-translations --compiler-runtime `"$stagedExe`"`" "
+          } else {
+            & $deployToolPath --release --no-translations --compiler-runtime "$stagedExe"
+          }
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "windeployqt failed with exit code $LASTEXITCODE"
+          }
+
+          # Clean loop discovery for OpenSSL to bypass runtime pipeline expression limitations
+          $opensslSearchRoots = @(
+            "C:\Program Files\OpenSSL-Win64\bin",
+            "C:\Program Files\OpenSSL\bin",
+            "C:\Strawberry\c\bin"
+          )
+          $opensslBin = $null
+          foreach ($root in $opensslSearchRoots) {
+            if (Test-Path $root) {
+              $cryptoDll = Join-Path $root "libcrypto-3-x64.dll"
+              if (Test-Path $cryptoDll) {
+                $opensslBin = $root
+                break
+              }
+            }
+          }
+
+          if (-not $opensslBin) {
+            $pathDirs = ($env:PATH -split ';') | Where-Object { $_ -and (Test-Path $_) }
+            foreach ($p in $pathDirs) {
+              $cryptoDll = Join-Path $p "libcrypto-3-x64.dll"
+              if (Test-Path $cryptoDll) {
+                $opensslBin = $p
+                break
+              }
+            }
+          }
+
+          if (-not $opensslBin) {
+            throw "OpenSSL runtime DLLs not found (libcrypto-3-x64.dll / libssl-3-x64.dll)."
+          }
+
+          Copy-Item -LiteralPath (Join-Path $opensslBin "libcrypto-3-x64.dll") -Destination $bundleDir -Force
+          Copy-Item -LiteralPath (Join-Path $opensslBin "libssl-3-x64.dll") -Destination $bundleDir -Force
+
+          $osslModules = Join-Path $opensslBin "ossl-modules"
+          if (Test-Path $osslModules) {
+            Copy-Item -Path $osslModules -Destination (Join-Path $bundleDir "ossl-modules") -Recurse -Force
+          }
+
+          # Ensure MSVC runtime DLLs are present (VCRUNTIME/MSVCP)
+          $msvcDlls = @('VCRUNTIME140.dll','VCRUNTIME140_1.dll','MSVCP140.dll','MSVCP140_1.dll','MSVCP140_2.dll')
+          foreach ($dll in $msvcDlls) {
+            $found = $null
+            $systemLocations = @('C:\Windows\System32','C:\Windows\SysWOW64')
+            foreach ($loc in $systemLocations) {
+              $candidate = Join-Path $loc $dll
+              if (Test-Path $candidate) { $found = $candidate; break }
+            }
+
+            if (-not $found) {
+              $pathDirs = ($env:PATH -split ';') | Where-Object { $_ -and (Test-Path $_) }
+              foreach ($p in $pathDirs) {
+                $candidate = Join-Path $p $dll
+                if (Test-Path $candidate) { $found = $candidate; break }
+              }
+            }
+
+            if (-not $found) {
+              $vsRoots = Get-ChildItem 'C:\Program Files\Microsoft Visual Studio' -Directory -ErrorAction SilentlyContinue
+              foreach ($r in $vsRoots) {
+                $candidate = Get-ChildItem -Path $r.FullName -Recurse -Include $dll -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+                if ($candidate) { $found = $candidate; break }
+              }
+            }
+
+            if ($found) {
+              Write-Host "Copying runtime DLL $dll from $found"
+              Copy-Item -LiteralPath $found -Destination $bundleDir -Force
+            } else {
+              Write-Warning "Could not locate runtime DLL: $dll"
+            }
+          }
+
+      - name: Zip runtime bundle
+        shell: pwsh
+        run: |
+          Push-Location dist
+          7z a ../AstraNotes-Windows.zip AstraNotes
+          Pop-Location
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: AstraNotes-Windows.zip
+          name: AstraNotes ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
