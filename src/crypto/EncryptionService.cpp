@@ -15,6 +15,20 @@
 #include <openssl/provider.h>
 #include <openssl/core_names.h>
 
+// Some older OpenSSL 3.x package headers (commonly on Linux distros) may
+// not define newer ARGON2-specific OSSL_KDF_PARAM_* macros. Provide
+// fallbacks to the expected parameter name strings so the code compiles
+// and works against older OpenSSL 3.x releases.
+#ifndef OSSL_KDF_PARAM_ARGON2_MEMCOST
+#define OSSL_KDF_PARAM_ARGON2_MEMCOST "argon2_memcost"
+#endif
+#ifndef OSSL_KDF_PARAM_ARGON2_LANES
+#define OSSL_KDF_PARAM_ARGON2_LANES "argon2_lanes"
+#endif
+#ifndef OSSL_KDF_PARAM_THREADS
+#define OSSL_KDF_PARAM_THREADS "threads"
+#endif
+
 
 namespace {
 constexpr int kKeySize = 32;      // AES-256
