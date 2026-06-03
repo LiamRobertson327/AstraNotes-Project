@@ -5,14 +5,36 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Option to control whether OpenSSL modules (ossl-modules) are copied to the
+# executable folder on Windows. Default ON to preserve previous behavior,
+# but packagers and CI can disable with -DDEPLOY_OPENSSL_MODULES=OFF.
+option(DEPLOY_OPENSSL_MODULES "Copy OpenSSL ossl-modules to build dir on Windows" ON)
+
 # 1. Setup the Qt Path
-set(Qt6_DIR "C:/Qt/6.11.0/mingw_64/lib/cmake/Qt6")
+# Prefer an externally-provided Qt6_DIR or CMAKE_PREFIX_PATH; fall back to find_package
+if(NOT DEFINED Qt6_DIR AND DEFINED ENV{QT_ROOT})
+    set(Qt6_DIR $ENV{QT_ROOT})
+endif()
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core Widgets Sql Test)
+if(DEFINED Qt6_DIR)
+    message(STATUS "Using Qt6 at: ${Qt6_DIR}")
+endif()
 
 # 2. Find OpenSSL
-if(NOT DEFINED ENV{GITHUB_ACTIONS})
-    if(EXISTS "C:/msys64/ucrt64")
-        set(OPENSSL_ROOT_DIR "C:/msys64/ucrt64")
+# Prefer user-provided OPENSSL_ROOT_DIR (or environment). Add common macOS Homebrew hints.
+if(NOT DEFINED OPENSSL_ROOT_DIR)
+    if(DEFINED ENV{OPENSSL_ROOT_DIR})
+        set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
+    elseif(APPLE)
+        if(EXISTS "/opt/homebrew/opt/openssl@3")
+            set(OPENSSL_ROOT_DIR "/opt/homebrew/opt/openssl@3")
+        elseif(EXISTS "/usr/local/opt/openssl@3")
+            set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl@3")
+        endif()
+    elseif(WIN32)
+        if(EXISTS "C:/msys64/ucrt64")
+            set(OPENSSL_ROOT_DIR "C:/msys64/ucrt64")
+        endif()
     endif()
 endif()
 
@@ -36,25 +58,29 @@ file(GLOB_RECURSE ASTRA_APP_UI_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/ui/*.cpp"
 )
 
-# Build UI as a separate static library so tests can link MainWindow without
-# duplicating MOC-generated symbols in AstraCore and the application target.
-add_library(AstraAppUI STATIC ${ASTRA_APP_UI_SOURCES})
-target_include_directories(AstraAppUI PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(AstraAppUI PRIVATE Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Sql AstraCore)
-
 # Build core library from shared sources so tests can link against implementation symbols.
 add_library(AstraCore STATIC ${ASTRA_CORE_SOURCES})
 target_include_directories(AstraCore PRIVATE
     ${CMAKE_SOURCE_DIR}/src
-    ${OPENSSL_INCLUDE_DIR}
 )
+if(DEFINED OPENSSL_INCLUDE_DIR)
+    target_include_directories(AstraCore PRIVATE ${OPENSSL_INCLUDE_DIR})
+endif()
 target_link_libraries(AstraCore PRIVATE
-    OpenSSL::Crypto
     Qt6::Core
     Qt6::Sql
     Qt6::Widgets
     Qt6::Gui
 )
+if(OpenSSL_FOUND)
+    target_link_libraries(AstraCore PRIVATE OpenSSL::Crypto)
+endif()
+
+# Build UI as a separate static library so tests can link MainWindow without
+# duplicating MOC-generated symbols in AstraCore and the application target.
+add_library(AstraAppUI STATIC ${ASTRA_APP_UI_SOURCES})
+target_include_directories(AstraAppUI PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(AstraAppUI PRIVATE Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Sql AstraCore)
 
 # Check if we are running in GitHub Actions (where we use MSVC which handles spaces fine)
 if(DEFINED ENV{GITHUB_ACTIONS})
@@ -64,28 +90,42 @@ else()
     set(RESOURCE_FILES "")
 endif()
 
+set(EXECUTABLE_OPTIONS)
+if(WIN32)
+    list(APPEND EXECUTABLE_OPTIONS WIN32)
+endif()
+if(APPLE)
+    list(APPEND EXECUTABLE_OPTIONS MACOSX_BUNDLE)
+endif()
+
 qt_add_executable(AstraNotes
-    WIN32 MACOSX_BUNDLE
+    ${EXECUTABLE_OPTIONS}
     src/app/main.cpp
-    
+
     ${RESOURCE_FILES}
 )
 target_include_directories(AstraNotes PRIVATE
-    src 
-    ${OPENSSL_INCLUDE_DIR}
-    )
+    src
+)
+if(DEFINED OPENSSL_INCLUDE_DIR)
+    target_include_directories(AstraNotes PRIVATE ${OPENSSL_INCLUDE_DIR})
+endif()
 
 # 4. Tell CMake which folders to use
 set_target_properties(AstraNotes PROPERTIES AUTOUIC_SEARCH_PATHS "src/ui")
 
+# 5. Link libraries
 # 5. Link libraries
 target_link_libraries(AstraNotes PRIVATE
     Qt6::Widgets
     Qt6::Core
     Qt6::Sql
     AstraCore
-    OpenSSL::Crypto
 )
+
+if(OpenSSL_FOUND)
+    target_link_libraries(AstraNotes PRIVATE OpenSSL::Crypto)
+endif()
 
 # Link the UI library into the application
 target_link_libraries(AstraNotes PRIVATE AstraAppUI)
@@ -108,7 +148,7 @@ add_subdirectory(tests)
 # This detects your MSYS2 OpenSSL modules and copies them to your build directory 
 # so the "Brain" can find its "Tools" even after a restart.
 # --- Portable OpenSSL Module Handling ---
-if(OpenSSL_FOUND AND WIN32)
+if(OpenSSL_FOUND AND WIN32 AND DEPLOY_OPENSSL_MODULES)
     # 1. Clean the list: Get the first actual path from the OpenSSL_CRYPTO_LIBRARIES list
     # This removes the "optimized" and "debug" keywords
     foreach(lib ${OPENSSL_CRYPTO_LIBRARIES})
