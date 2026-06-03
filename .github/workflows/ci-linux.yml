@@ -40,5 +40,6 @@ jobs:
       - name: Run tests
         run: |
           cd build
-          # xvfb-run establishes a virtual screen memory frame so that GUI objects can launch successfully
+          # Explicitly point OpenSSL to the Ubuntu platform module providers path
+          export OPENSSL_MODULES=/usr/lib/x86_64-linux-gnu/ossl-modules
           xvfb-run ctest -j 2 --output-on-failure
