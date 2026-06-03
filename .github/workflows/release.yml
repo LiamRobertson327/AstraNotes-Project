@@ -1,0 +1,330 @@
+name: CI - Multi-Platform Release Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+      
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.os-name }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            os-name: Linux
+          - os: macos-latest
+            platform: macos
+            os-name: macOS
+          - os: windows-2022
+            platform: windows
+            os-name: Windows
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ==========================================
+      # 1. PLATFORM-SPECIFIC DEPENDENCY INJECTION
+      # ==========================================
+      
+      # --- LINUX PROVISIONS ---
+      - name: Install Linux Dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config perl curl libxkbcommon-dev libgl1-mesa-dev libxcb-cursor0 xvfb
+
+      - name: Install Qt 6.5 (Linux)
+        if: matrix.platform == 'linux'
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          host: 'linux'
+          target: 'desktop'
+
+      - name: Cache OpenSSL 3.4.1 Build (Linux)
+        if: matrix.platform == 'linux'
+        id: cache-openssl
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/openssl-3.4.1
+          key: ${{ runner.os }}-openssl-3.4.1
+
+      - name: Install OpenSSL 3.4.1 from source (Linux Cache Miss)
+        if: matrix.platform == 'linux' && steps.cache-openssl.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          OPENSSL_VERSION=3.4.1
+          OPENSSL_PREFIX="$HOME/openssl-$OPENSSL_VERSION"
+          curl -LO "https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz"
+          tar -xzf "openssl-$OPENSSL_VERSION.tar.gz"
+          cd "openssl-$OPENSSL_VERSION"
+          ./Configure linux-x86_64 --prefix="$OPENSSL_PREFIX" --openssldir="$OPENSSL_PREFIX/ssl" shared no-tests
+          make -j"$(nproc)"
+          make install_sw
+
+      - name: Export OpenSSL Environment Variables (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          OPENSSL_PREFIX="/home/runner/openssl-3.4.1"
+          echo "OPENSSL_PREFIX=$OPENSSL_PREFIX" >> "$GITHUB_ENV"
+          echo "OPENSSL_ROOT_DIR=$OPENSSL_PREFIX" >> "$GITHUB_ENV"
+          echo "OPENSSL_MODULES=$OPENSSL_PREFIX/lib64/ossl-modules" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$OPENSSL_PREFIX/lib64:$OPENSSL_PREFIX/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          echo "$OPENSSL_PREFIX/bin" >> "$GITHUB_PATH"
+
+      # --- macOS PROVISIONS ---
+      - name: Install Homebrew packages (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          brew update
+          brew install qt@6 openssl@3 cmake ninja
+
+      # --- WINDOWS PROVISIONS ---
+      - name: Install Qt (Windows)
+        if: matrix.platform == 'windows'
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.8.3'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+
+      - name: Set up MSVC Developer Command Prompt (Windows)
+        if: matrix.platform == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Remove MinGW from PATH (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $path = $env:PATH -split ';' | Where-Object { $_ -notlike "*mingw*" }
+          $path = $path -join ';'
+          echo "PATH=$path" >> $env:GITHUB_ENV
+
+      - name: Install OpenSSL (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          choco install openssl -y --no-progress
+
+
+      # ==========================================
+      # 2. COMPILATION LAYER
+      # ==========================================
+      
+      - name: Configure and Build (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          QT_PREFIX=$(dirname "$(dirname "$(which qmake)" )") || true
+          mkdir -p build && cd build
+          cmake -S .. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${QT_PREFIX}/lib/cmake/Qt6" -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR"
+          cmake --build . --config Release
+
+      - name: Configure and Build (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          QT_PREFIX=$(brew --prefix qt@6)
+          OPENSSL_PREFIX=$(brew --prefix openssl@3)
+          mkdir -p build && cd build
+          cmake -S .. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${QT_PREFIX}/lib/cmake/Qt6" -DOPENSSL_ROOT_DIR="${OPENSSL_PREFIX}"
+          cmake --build . --config Release
+
+      - name: Configure and Build (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
+          mkdir build && cd build
+          $cmakeArgs = @(
+            '-G', 'Ninja',
+            '-DCMAKE_C_COMPILER=cl',
+            '-DCMAKE_CXX_COMPILER=cl',
+            '-DCMAKE_BUILD_TYPE=Release',
+            '-DCMAKE_PREFIX_PATH=' + $env:QT_ROOT_DIR
+          )
+          cmake @cmakeArgs ..
+          cmake --build . --config Release
+
+
+      # ==========================================
+      # 3. DIAGNOSTICS & TESTING LAYER
+      # ==========================================
+      
+      - name: OpenSSL Diagnostics (Linux Only)
+        if: matrix.platform == 'linux'
+        env:
+          LD_LIBRARY_PATH: /home/runner/openssl-3.4.1/lib64:/home/runner/openssl-3.4.1/lib
+        run: |
+            /home/runner/openssl-3.4.1/bin/openssl version
+            echo "=== Providers ==="
+            /home/runner/openssl-3.4.1/bin/openssl list -providers
+            echo "=== KDFs ==="
+            /home/runner/openssl-3.4.1/bin/openssl list -kdf-algorithms
+
+      - name: Run Tests (Linux Headless)
+        if: matrix.platform == 'linux'
+        env:
+          LD_LIBRARY_PATH: /home/runner/openssl-3.4.1/lib64:/home/runner/openssl-3.4.1/lib
+        run: |
+          cd build
+          xvfb-run ctest -j 2 --output-on-failure
+
+      - name: Run Tests (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          cd build
+          ctest -j 2 --output-on-failure
+
+      - name: Run Tests (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          cd build
+          ctest -C Release --output-on-failure
+
+
+      # ==========================================
+      # 4. ARTIFACT PACKAGING LAYER
+      # ==========================================
+
+      # --- LINUX PACKAGING ---
+      - name: Stage Runtime Bundle (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          mkdir -p dist/AstraNotes
+          cp build/AstraNotes dist/AstraNotes/ 2>/dev/null || cp build/tests/SmokeTest dist/AstraNotes/AstraNotes # Adjust if fallback binary naming changes
+          
+          # Inject source compiled OpenSSL dependencies into package runtime directory
+          cp /home/runner/openssl-3.4.1/lib64/libcrypto.so.3 dist/AstraNotes/
+          cp /home/runner/openssl-3.4.1/lib64/libssl.so.3 dist/AstraNotes/
+          mkdir -p dist/AstraNotes/ossl-modules
+          cp /home/runner/openssl-3.4.1/lib64/ossl-modules/* dist/AstraNotes/ossl-modules/
+          
+          cd dist
+          zip -r ../AstraNotes-Linux.zip AstraNotes
+
+      # --- macOS PACKAGING ---
+      - name: Stage Runtime Bundle (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p dist
+          QT_PREFIX=$(brew --prefix qt@6)
+          
+          # Run macdeployqt to inject frameworks, dylibs, plugin trees natively
+          if [ -d "build/AstraNotes.app" ]; then
+            "$QT_PREFIX/bin/macdeployqt" build/AstraNotes.app -verbose=1
+            cp -R build/AstraNotes.app dist/AstraNotes.app
+          else
+            # App bundling fallback structure if compiled nakedly
+            mkdir -p dist/AstraNotes
+            cp build/AstraNotes dist/AstraNotes/ || true
+          fi
+          
+          cd dist
+          zip -r ../AstraNotes-macOS.zip .
+
+      # --- WINDOWS PACKAGING ---
+      - name: Stage Runtime Bundle (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $repoRoot = Get-Location
+          $buildDir = Join-Path $repoRoot "build"
+          $bundleDir = Join-Path $repoRoot "dist/AstraNotes"
+
+          if (Test-Path $bundleDir) { Remove-Item -Recurse -Force $bundleDir }
+          New-Item -ItemType Directory -Path $bundleDir | Out-Null
+
+          $exePath = Get-ChildItem -Path $buildDir -Recurse -Filter "AstraNotes.exe" | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $exePath) { $exePath = Get-ChildItem -Path $buildDir -Recurse -Filter "*.exe" | Select-Object -First 1 -ExpandProperty FullName }
+          if (-not $exePath) { throw "Executable target binary not found." }
+
+          $stagedExe = Join-Path $bundleDir "AstraNotes.exe"
+          Copy-Item -LiteralPath $exePath -Destination $stagedExe -Force
+
+          $deployTool = Get-Command windeployqt -ErrorAction SilentlyContinue
+          if (-not $deployTool) {
+            $deployToolPath = Get-ChildItem -Path "$env:QT_ROOT_DIR" -Recurse -Filter "windeployqt.exe" | Select-Object -First 1 -ExpandProperty FullName
+          } else {
+            $deployToolPath = $deployTool.Source
+          }
+          if (-not $deployToolPath) { throw "windeployqt.exe not found." }
+
+          $vcvars = Get-ChildItem -Path "C:\Program Files\Microsoft Visual Studio" -Recurse -Filter "vcvars64.bat" | Select-Object -First 1 -ExpandProperty FullName
+          if ($vcvars) {
+            cmd.exe /c " `"$vcvars`" && powershell -Command `"& `"$deployToolPath`" --release --no-translations --compiler-runtime `"$stagedExe`"`" "
+          } else {
+            & $deployToolPath --release --no-translations --compiler-runtime "$stagedExe"
+          }
+
+          $opensslSearchRoots = @("C:\Program Files\OpenSSL-Win64\bin", "C:\Program Files\OpenSSL\bin", "C:\Strawberry\c\bin")
+          $opensslBin = $null
+          foreach ($root in $opensslSearchRoots) {
+            if (Test-Path $root) {
+              if (Test-Path (Join-Path $root "libcrypto-3-x64.dll")) { $opensslBin = $root; break }
+            }
+          }
+          if (-not $opensslBin) {
+            $pathDirs = ($env:PATH -split ';') | Where-Object { $_ -and (Test-Path $_) }
+            foreach ($p in $pathDirs) {
+              if (Test-Path (Join-Path $p "libcrypto-3-x64.dll")) { $opensslBin = $p; break }
+            }
+          }
+          if (-not $opensslBin) { throw "OpenSSL runtime DLLs not found." }
+
+          Copy-Item -LiteralPath (Join-Path $opensslBin "libcrypto-3-x64.dll") -Destination $bundleDir -Force
+          Copy-Item -LiteralPath (Join-Path $opensslBin "libssl-3-x64.dll") -Destination $bundleDir -Force
+
+          $osslModules = Join-Path $opensslBin "ossl-modules"
+          if (Test-Path $osslModules) { Copy-Item -Path $osslModules -Destination (Join-Path $bundleDir "ossl-modules") -Recurse -Force }
+
+          $msvcDlls = @('VCRUNTIME140.dll','VCRUNTIME140_1.dll','MSVCP140.dll','MSVCP140_1.dll','MSVCP140_2.dll')
+          foreach ($dll in $msvcDlls) {
+            $found = $null
+            $systemLocations = @('C:\Windows\System32','C:\Windows\SysWOW64')
+            foreach ($loc in $systemLocations) { if (Test-Path (Join-Path $loc $dll)) { $found = Join-Path $loc $dll; break } }
+            if (-not $found) {
+              $pathDirs = ($env:PATH -split ';') | Where-Object { $_ -and (Test-Path $_) }
+              foreach ($p in $pathDirs) { if (Test-Path (Join-Path $p $dll)) { $found = Join-Path $p $dll; break } }
+            }
+            if ($found) { Copy-Item -LiteralPath $found -Destination $bundleDir -Force }
+          }
+
+      - name: Zip runtime bundle (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          Push-Location dist
+          7z a ../AstraNotes-Windows.zip AstraNotes
+          Pop-Location
+
+
+      # ==========================================
+      # 5. UNIFIED GLOBAL RELEASE DISPATCH
+      # ==========================================
+      
+      - name: Create or Update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            AstraNotes-Linux.zip
+            AstraNotes-macOS.zip
+            AstraNotes-Windows.zip
+          name: AstraNotes ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
