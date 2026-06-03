@@ -25,7 +25,16 @@ jobs:
           host: 'linux'
           target: 'desktop'
 
-      - name: Install OpenSSL 3.4.1 from source
+      # --- OPTIMIZATION: CACHE OPENSSL 3.4.1 TO SPEED UP SUBSEQUENT RUNS ---
+      - name: Cache OpenSSL 3.4.1 Build
+        id: cache-openssl
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/openssl-3.4.1
+          key: ${{ runner.os }}-openssl-3.4.1
+
+      - name: Install OpenSSL 3.4.1 from source (Run only on Cache Miss)
+        if: steps.cache-openssl.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           OPENSSL_VERSION=3.4.1
@@ -36,10 +45,15 @@ jobs:
           ./Configure linux-x86_64 --prefix="$OPENSSL_PREFIX" --openssldir="$OPENSSL_PREFIX/ssl" shared no-tests
           make -j"$(nproc)"
           make install_sw
+
+      # --- GLOBAL RUNTIME REGISTRATION ---
+      - name: Export OpenSSL Environment Variables
+        run: |
+          OPENSSL_PREFIX="/home/runner/openssl-3.4.1"
           echo "OPENSSL_PREFIX=$OPENSSL_PREFIX" >> "$GITHUB_ENV"
           echo "OPENSSL_ROOT_DIR=$OPENSSL_PREFIX" >> "$GITHUB_ENV"
-          echo "OPENSSL_MODULES=$OPENSSL_PREFIX/lib/ossl-modules" >> "$GITHUB_ENV"
-          echo "LD_LIBRARY_PATH=$OPENSSL_PREFIX/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          echo "OPENSSL_MODULES=$OPENSSL_PREFIX/lib64/ossl-modules" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$OPENSSL_PREFIX/lib64:$OPENSSL_PREFIX/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
           echo "$OPENSSL_PREFIX/bin" >> "$GITHUB_PATH"
 
       - name: Configure
@@ -54,20 +68,20 @@ jobs:
           cd build
           cmake --build . --config Release
 
-      # --- DIAGNOSTIC STEP TO PROVE WHAT IS GOING ON ---
+      # --- DIAGNOSTIC STEP (FIXED: USING LIB64 RUNTIME DEPENDENCIES) ---
       - name: OpenSSL Diagnostics
         env:
-          LD_LIBRARY_PATH: ${{ env.OPENSSL_PREFIX }}/lib
+          LD_LIBRARY_PATH: /home/runner/openssl-3.4.1/lib64:/home/runner/openssl-3.4.1/lib
         run: |
-            "${OPENSSL_PREFIX}/bin/openssl" version
+            /home/runner/openssl-3.4.1/bin/openssl version
             echo "=== Providers ==="
-            "${OPENSSL_PREFIX}/bin/openssl" list -providers
+            /home/runner/openssl-3.4.1/bin/openssl list -providers
             echo "=== KDFs ==="
-            "${OPENSSL_PREFIX}/bin/openssl" list -kdf-algorithms
+            /home/runner/openssl-3.4.1/bin/openssl list -kdf-algorithms
 
       - name: Run tests
         env:
-          LD_LIBRARY_PATH: ${{ env.OPENSSL_PREFIX }}/lib
+          LD_LIBRARY_PATH: /home/runner/openssl-3.4.1/lib64:/home/runner/openssl-3.4.1/lib
         run: |
           cd build
           xvfb-run ctest -j 2 --output-on-failure
