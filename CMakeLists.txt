@@ -132,11 +132,22 @@ target_link_libraries(AstraNotes PRIVATE AstraAppUI)
 
 
 if(COMMAND qt_generate_deploy_app_script)
-    qt_generate_deploy_app_script(
-        TARGET AstraNotes
-        OUTPUT_SCRIPT deploy_script
-        NO_UNSUPPORTED_PLATFORM_ERROR
-    )
+    # qt_generate_deploy_app_script changed signatures across Qt 6.x releases.
+    # Newer Qt (>= 6.5) supports OUTPUT_SCRIPT; older Qt (6.2/6.4) use FILENAME.
+    if(DEFINED Qt6Core_VERSION AND Qt6Core_VERSION VERSION_GREATER_EQUAL "6.5.0")
+        qt_generate_deploy_app_script(
+            TARGET AstraNotes
+            OUTPUT_SCRIPT deploy_script
+            NO_UNSUPPORTED_PLATFORM_ERROR
+        )
+    else()
+        # Fallback for older Qt 6.x where the argument is named FILENAME
+        qt_generate_deploy_app_script(
+            TARGET AstraNotes
+            FILENAME deploy_script
+            NO_UNSUPPORTED_PLATFORM_ERROR
+        )
+    endif()
 
     install(SCRIPT ${deploy_script})
 else()

@@ -12,16 +12,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build pkg-config libssl-dev qt6-base-dev
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libssl-dev libxkbcommon-dev libgl1-mesa-dev
+
+      - name: Install Qt 6.5 (jurplel/install-qt-action)
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.5.3'
+          host: 'linux'
+          target: 'desktop'
 
       - name: Configure
         run: |
+          QT_PREFIX=$(dirname "$(dirname "$(which qmake)" )") || true
           mkdir -p build
           cd build
-          cmake -S .. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S .. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${QT_PREFIX}/lib/cmake/Qt6"
 
       - name: Build
         run: |
