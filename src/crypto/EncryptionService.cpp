@@ -80,7 +80,7 @@ bool EncryptionService::deriveKey(const QString &password,
     QString modulePath = QDir::toNativeSeparators(appDir + "/ossl-modules");
 
     // 2. Initialize OpenSSL Provider
-    OSSL_PROVIDER_set_default_search_path(nullptr, modulePath.toUtf8().constData());
+    //OSSL_PROVIDER_set_default_search_path(nullptr, modulePath.toUtf8().constData());
     OSSL_PROVIDER *deflt = OSSL_PROVIDER_try_load(nullptr, "default", 1);
     if(!deflt){
         deflt = OSSL_PROVIDER_load(nullptr, "default");
