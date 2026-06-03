@@ -15,7 +15,7 @@ option(DEPLOY_OPENSSL_MODULES "Copy OpenSSL ossl-modules to build dir on Windows
 if(NOT DEFINED Qt6_DIR AND DEFINED ENV{QT_ROOT})
     set(Qt6_DIR $ENV{QT_ROOT})
 endif()
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Widgets Sql Test)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Widgets Sql Test)
 if(DEFINED Qt6_DIR)
     message(STATUS "Using Qt6 at: ${Qt6_DIR}")
 endif()
