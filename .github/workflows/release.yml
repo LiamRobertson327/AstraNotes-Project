@@ -42,18 +42,42 @@ jobs:
         run: |
           choco install openssl -y --no-progress
 
+      - name: Resolve OpenSSL Root
+        shell: pwsh
+        run: |
+          $opensslRoots = @(
+            "C:\Program Files\OpenSSL-Win64",
+            "C:\Program Files\OpenSSL"
+          )
+
+          $resolvedRoot = $opensslRoots | Where-Object { Test-Path (Join-Path $_ "include") -and Test-Path (Join-Path $_ "lib") } | Select-Object -First 1
+
+          if ($resolvedRoot) {
+            Write-Host "Resolved OpenSSL root: $resolvedRoot"
+            echo "OPENSSL_ROOT_DIR=$resolvedRoot" >> $env:GITHUB_ENV
+          } else {
+            Write-Warning "OpenSSL root not found in standard Windows locations; relying on CMake fallback lookup."
+          }
+
       - name: Configure and Build
         shell: pwsh
         run: |
           mkdir build
           cd build
           # Explicitly tell CMake to use the Visual Studio 'cl' compiler
-          cmake -G "Ninja" `
-                -DCMAKE_C_COMPILER=cl `
-                -DCMAKE_CXX_COMPILER=cl `
-                -DCMAKE_BUILD_TYPE=Release `
-                -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
-                -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" ..
+          $cmakeArgs = @(
+            '-G', 'Ninja',
+            '-DCMAKE_C_COMPILER=cl',
+            '-DCMAKE_CXX_COMPILER=cl',
+            '-DCMAKE_BUILD_TYPE=Release',
+            '-DCMAKE_PREFIX_PATH=' + $env:QT_ROOT_DIR
+          )
+
+          if ($env:OPENSSL_ROOT_DIR) {
+            $cmakeArgs += '-DOPENSSL_ROOT_DIR=' + $env:OPENSSL_ROOT_DIR
+          }
+
+          cmake @cmakeArgs ..
           cmake --build . --config Release
 
       - name: Run Smoke Tests
