@@ -216,18 +216,30 @@ jobs:
       - name: Package Universal AppImage (Linux)
         if: matrix.platform == 'linux'
         env:
-          OUTPUT: AstraNotes-Linux-x86_64.AppImage
+          # Use the variable name requested by the logs
+          LDAI_OUTPUT: AstraNotes-Linux-x86_64.AppImage
           LD_LIBRARY_PATH: /home/runner/openssl-3.4.1/lib64:/home/runner/openssl-3.4.1/lib
         run: |
           mkdir -p appdir/usr/bin
-          # Explicitly copy your binary
+          mkdir -p appdir/usr/share/applications
+          
+          # Copy your binary
           cp build/AstraNotes appdir/usr/bin/AstraNotes
           
-          # Manually create the AppRun file if linuxdeploy misses it
+          # Create a minimal .desktop file
+          cat <<EOF > appdir/usr/share/applications/AstraNotes.desktop
+          [Desktop Entry]
+          Name=AstraNotes
+          Exec=AstraNotes
+          Type=Application
+          Categories=Utility;
+          EOF
+          
+          # Manually create the AppRun file
           echo -e '#!/bin/sh\nexec "$(dirname "$0")/usr/bin/AstraNotes" "$@"' > appdir/AppRun
           chmod +x appdir/AppRun
           
-          # Continue with linuxdeploy to bundle libraries
+          # Run deployment
           linuxdeploy --appdir appdir --plugin qt --output appimage
 
       # --- macOS PACKAGING ---
