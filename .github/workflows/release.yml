@@ -118,7 +118,8 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          choco install openssl -y --no-progress
+          # Force Chocolatey to install OpenSSL 3.4.1 specifically
+          choco install openssl --version=3.4.1 -y --no-progress
 
 
       # ==========================================
@@ -153,7 +154,8 @@ jobs:
             '-DCMAKE_C_COMPILER=cl',
             '-DCMAKE_CXX_COMPILER=cl',
             '-DCMAKE_BUILD_TYPE=Release',
-            '-DCMAKE_PREFIX_PATH=' + $env:QT_ROOT_DIR
+            '-DCMAKE_PREFIX_PATH=' + $env:QT_ROOT_DIR,
+            '-DOPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64'
           )
           cmake @cmakeArgs ..
           cmake --build . --config Release
