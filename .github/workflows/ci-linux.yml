@@ -36,6 +36,7 @@ jobs:
           ./Configure linux-x86_64 --prefix="$OPENSSL_PREFIX" --openssldir="$OPENSSL_PREFIX/ssl" shared no-tests
           make -j"$(nproc)"
           make install_sw
+          echo "OPENSSL_PREFIX=$OPENSSL_PREFIX" >> "$GITHUB_ENV"
           echo "OPENSSL_ROOT_DIR=$OPENSSL_PREFIX" >> "$GITHUB_ENV"
           echo "OPENSSL_MODULES=$OPENSSL_PREFIX/lib/ossl-modules" >> "$GITHUB_ENV"
           echo "LD_LIBRARY_PATH=$OPENSSL_PREFIX/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
@@ -55,14 +56,18 @@ jobs:
 
       # --- DIAGNOSTIC STEP TO PROVE WHAT IS GOING ON ---
       - name: OpenSSL Diagnostics
+        env:
+          LD_LIBRARY_PATH: ${{ env.OPENSSL_PREFIX }}/lib
         run: |
-            openssl version
+            "${OPENSSL_PREFIX}/bin/openssl" version
             echo "=== Providers ==="
-            openssl list -providers
+            "${OPENSSL_PREFIX}/bin/openssl" list -providers
             echo "=== KDFs ==="
-            openssl list -kdf-algorithms
+            "${OPENSSL_PREFIX}/bin/openssl" list -kdf-algorithms
 
       - name: Run tests
+        env:
+          LD_LIBRARY_PATH: ${{ env.OPENSSL_PREFIX }}/lib
         run: |
           cd build
           xvfb-run ctest -j 2 --output-on-failure
