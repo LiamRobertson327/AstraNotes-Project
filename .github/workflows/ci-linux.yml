@@ -38,21 +38,13 @@ jobs:
           cmake --build . --config Release
 
       # --- DIAGNOSTIC STEP TO PROVE WHAT IS GOING ON ---
-      - name: Debug OpenSSL Version and Module Layout
+      - name: OpenSSL Diagnostics
         run: |
-          echo "=== Check OpenSSL System Version ==="
-          openssl version
-          
-          echo "=== Check What CMake Deployed ==="
-          echo "build/tests directory contents:"
-          ls -la build/tests || true
-          
-          echo "build/tests/ossl-modules directory contents:"
-          ls -la build/tests/ossl-modules || true
-          
-          echo "=== Check System Provider Directories ==="
-          ls -la /usr/lib/x86_64-linux-gnu/ossl-modules || true
-          ls -la /usr/lib/ossl-modules || true
+            openssl version
+            echo "=== Providers ==="
+            openssl list -providers
+            echo "=== KDFs ==="
+            openssl list -kdf-algorithms
 
       - name: Run tests
         run: |

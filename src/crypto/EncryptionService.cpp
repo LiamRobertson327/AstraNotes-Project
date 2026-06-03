@@ -79,8 +79,11 @@ bool EncryptionService::deriveKey(const QString &password,
     QString appDir = QCoreApplication::applicationDirPath();
     QString modulePath = QDir::toNativeSeparators(appDir + "/ossl-modules");
 
-    // 2. Initialize OpenSSL Provider
+    #ifdef _WIN32
     OSSL_PROVIDER_set_default_search_path(nullptr, modulePath.toUtf8().constData());
+    #endif
+    //QString modulePath = QDir::toNativeSeparators(appDir + "/ossl-modules");
+    //OSSL_PROVIDER_set_default_search_path(nullptr, modulePath.toUtf8().constData());
     OSSL_PROVIDER *deflt = OSSL_PROVIDER_try_load(nullptr, "default", 1);
     if(!deflt){
         deflt = OSSL_PROVIDER_load(nullptr, "default");
@@ -88,10 +91,27 @@ bool EncryptionService::deriveKey(const QString &password,
     
     EVP_KDF *kdf = EVP_KDF_fetch(nullptr, "ARGON2ID", nullptr);
     if (!kdf) {
-        if (errorMessage) *errorMessage = "Argon2id module not found at: " + modulePath;
-        if (deflt) OSSL_PROVIDER_unload(deflt);
+        qWarning() << "Argon2 KDF not available in OpenSSL build";
+        qWarning() << "OpenSSL version:" << OpenSSL_version(OPENSSL_VERSION);
+
+        const char *err = ERR_reason_error_string(ERR_get_error());
+        if (errorMessage) {
+            *errorMessage =
+                QString("Argon2id not available in this OpenSSL build");
+        }
         return false;
     }
+    qDebug() << "OpenSSL version:"
+         << OpenSSL_version(OPENSSL_VERSION);
+
+    qDebug() << "Module path:"
+            << modulePath;
+
+    qDebug() << "Default provider loaded:"
+            << (deflt != nullptr);
+
+    qDebug() << "ARGON2ID available:"
+            << (kdf != nullptr);
 
     EVP_KDF_CTX *kdf_ctx = EVP_KDF_CTX_new(kdf);
     EVP_KDF_free(kdf); 
