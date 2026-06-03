@@ -37,6 +37,11 @@ jobs:
           $path = $path -join ';'
           echo "PATH=$path" >> $env:GITHUB_ENV
 
+      - name: Install OpenSSL
+        shell: pwsh
+        run: |
+          choco install openssl -y --no-progress
+
       - name: Configure and Build
         shell: pwsh
         run: |
@@ -47,7 +52,7 @@ jobs:
                 -DCMAKE_C_COMPILER=cl `
                 -DCMAKE_CXX_COMPILER=cl `
                 -DCMAKE_BUILD_TYPE=Release `
-                -DOPENSSL_ROOT_DIR="C:/Program FIles/OpenSSL-Win64" `
+                -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
                 -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" ..
           cmake --build . --config Release
 
