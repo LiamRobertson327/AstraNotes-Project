@@ -47,6 +47,7 @@ jobs:
                 -DCMAKE_C_COMPILER=cl `
                 -DCMAKE_CXX_COMPILER=cl `
                 -DCMAKE_BUILD_TYPE=Release `
+                -DOPENSSL_ROOT_DIR="C:/Program FIles/OpenSSL-Win64" `
                 -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" ..
           cmake --build . --config Release
 
