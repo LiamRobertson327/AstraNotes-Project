@@ -40,6 +40,7 @@ jobs:
       - name: Run tests
         run: |
           cd build
-          # Explicitly point OpenSSL to the Ubuntu platform module providers path
-          export OPENSSL_MODULES=/usr/lib/x86_64-linux-gnu/ossl-modules
+          # Checks both Ubuntu 22.04 and 24.04 module structures dynamically
+          export OPENSSL_MODULES=/usr/lib/ossl-modules:/usr/lib/x86_64-linux-gnu/ossl-modules
+          
           xvfb-run ctest -j 2 --output-on-failure
