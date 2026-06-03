@@ -114,12 +114,28 @@ jobs:
           $path = $path -join ';'
           echo "PATH=$path" >> $env:GITHUB_ENV
 
+      - name: Set up VCPKG binary cache
+        shell: pwsh
+        run: |
+          # Define the path where vcpkg will look for/store its cached binaries
+          $cachePath = Join-Path $env:GITHUB_WORKSPACE "vcpkg_cache"
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$cachePath" >> $env:GITHUB_ENV
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: vcpkg_cache
+          # This key ensures that the cache is reused across runs. 
+          # You can add the OS or version to the key if needed.
+          key: ${{ runner.os }}-vcpkg-openssl
+
       - name: Install OpenSSL (Windows)
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          # Use the pre-installed vcpkg to install OpenSSL 3
+          # vcpkg will now automatically check the path in VCPKG_DEFAULT_BINARY_CACHE
           vcpkg install openssl:x64-windows
+          
           # Export the path based on the standard vcpkg location on GitHub runners
           echo "OPENSSL_ROOT_DIR=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows" >> $env:GITHUB_ENV
 
@@ -228,9 +244,12 @@ jobs:
           
           # Create a minimal .desktop file
           cat <<EOF > appdir/usr/share/applications/AstraNotes.desktop
+          # Update this part of your YAML step:
+          cat <<EOF > appdir/usr/share/applications/AstraNotes.desktop
           [Desktop Entry]
           Name=AstraNotes
           Exec=AstraNotes
+          Icon=utilities-terminal
           Type=Application
           Categories=Utility;
           EOF
