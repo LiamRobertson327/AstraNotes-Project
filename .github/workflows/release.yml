@@ -248,12 +248,15 @@ jobs:
           # Copy your binary
           cp build/AstraNotes appdir/usr/bin/AstraNotes
           
+          mkdir -p appdir/usr/share/icons/hicolor/256x256/apps
+          cp AppLogo.png appdir/usr/share/icons/hicolor/256x256/apps/astranotes.png
+
           # Create a minimal .desktop file
           cat <<EOF > appdir/usr/share/applications/AstraNotes.desktop
           [Desktop Entry]
           Name=AstraNotes
           Exec=AstraNotes
-          Icon=utilities-terminal
+          Icon=astranotes
           Type=Application
           Categories=Utility;
           EOF
