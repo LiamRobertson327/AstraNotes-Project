@@ -1,7 +1,7 @@
-# AstraNotes UML Starter Diagrams
+# AstraNotes UML Reference Diagrams
 
-**Date**: April 20, 2026  
-**Purpose**: Initial UML baseline aligned to `INITIAL_REQUIREMENTS.md`, `REQUIREMENTS_UPDATED.md`, `USER_STORIES.md`, and `ARCHITECTURE.md`.
+**Date**: June 4, 2026
+**Purpose**: Current UML reference aligned to `INITIAL_REQUIREMENTS_REVISED.md`, `USER_STORIES.md`, and `ARCHITECTURE.md`.
 
 ---
 
@@ -49,91 +49,316 @@ flowchart LR
 
 ---
 
-## 2. Class Diagram (Domain + Services + Persistence)
+## 2. Class Diagram (Current Runtime Model)
 
 ```mermaid
 classDiagram
-  class Note {
-    -qint64 id
-    -QString typeId
-    -QString title
-    -QString content
-    -QDateTime lastModified
-    +Note(QString noteTypeId, QString noteTitle)
-    +QString getTitle() const
-    +qint64 getId() const
-    +QString getTypeId() const
-    +void setId(qint64 newId)
-    +void setTitle(const QString& newTitle)
-    +void setContent(const QString& newContent)
-    +void setTypeId(const QString& newTypeId)
-    +void display() const
+  class INote {
+    <<interface>>
+    +noteId() qint64
+    +typeId() QString
+    +title() QString
+    +content() QString
+    +createdAt() QDateTime
+    +lastModified() QDateTime
+    +setNoteId(qint64)
+    +setTypeId(QString)
+    +setTitle(QString)
+    +setContent(QString)
+    +setCreatedAt(QDateTime)
+    +setLastModified(QDateTime)
+    +displayText() QString
   }
 
-  class NoteSnapshot {
-    +qint64 snapshotId
-    +qint64 noteId
-    +Binary serializedPayload
-    +QDateTime createdAt
-    +QDateTime? expiresAt
+  class Note {
+    +qint64 m_noteId
+    +QString m_typeId
+    +QString m_title
+    +QString m_content
+    +QDateTime m_createdAt
+    +QDateTime m_lastModified
+    +bool m_isSecured
+    +QString m_encryptionSalt
+    +QString m_encryptionIv
+    +QString m_encryptionTag
+  }
+
+  class ISnapshot {
+    <<interface>>
+    +snapshotId() qint64
+    +noteId() qint64
+    +title() QString
+    +content() QString
+    +createdAt() QDateTime
+    +setSnapshotId(qint64)
+    +setNoteId(qint64)
+    +setTitle(QString)
+    +setContent(QString)
+    +setCreatedAt(QDateTime)
+  }
+
+  class Snapshot {
+    +qint64 m_snapshotId
+    +qint64 m_noteId
+    +QString m_title
+    +QString m_content
+    +QDateTime m_createdAt
+    +bool m_isSecured
+    +QString m_encryptionSalt
+    +QString m_encryptionIv
+    +QString m_encryptionTag
   }
 
   class INoteRepository {
+    <<interface>>
     +save(Note)
     +getById(qint64)
-    +searchTitles(QString)
-    +moveToTrash(qint64)
-    +restoreFromTrash(qint64)
-    +purgeExpiredTrash(QDateTime)
-    +createSnapshot(qint64)
+    +getById(qint64, QString)
+    +getAll()
+    +deleteById(qint64)
+    +searchByTitle(QString)
+    +searchByContent(QString)
+    +saveSnapshot(Snapshot)
+    +getSnapshotsByNoteId(qint64)
+    +getSnapshotById(qint64)
+    +trashNote(qint64)
+    +restoreNote(qint64)
+    +purgeTrashedNotes(int)
+    +searchByTitlePaged(QString, int, int)
   }
 
-  class SQLiteNoteRepository {
+  class SqliteNoteRepository {
     +QSqlDatabase db
-    +QSqlQuery preparedQueries
+    +save(Note)
+    +getAll()
+    +searchByTitlePaged(QString, int, int)
+    +trashNote(qint64)
+    +restoreNote(qint64)
+  }
+
+  class INoteService {
+    <<interface>>
+    +loadNote(qint64, QString)
+    +saveNote(Note, QString)
+    +createNote(QString, QString)
+    +searchByTitlePaged(QString, int, int)
+    +trashNote(qint64)
+    +loadNoteRobust(qint64, QString)
   }
 
   class NoteService {
-    +createNote(...)
-    +updateNote(...)
-    +manualSave(qint64)
-    +autoSave(qint64)
-    +deleteToTrash(qint64)
-    +restore(qint64)
-    +searchInOpenNote(QString, Note)
-    +searchAllByTitle(QString)
+    +kMaxTitleCharacters
+    +kMaxContentBytes
+    +loadNote(qint64, QString)
+    +saveNote(Note, QString)
+    +createNote(QString, QString)
+    +searchByTitlePaged(QString, int, int)
+    +trashNote(qint64)
   }
 
-  class EncryptionService {
-    +encrypt(AES-256-GCM)
-    +decrypt(AES-256-GCM)
-    +deriveKey(Argon2id)
+  class ISnapshotService {
+    <<interface>>
+    +saveSnapshot(Note, QString)
+    +getSnapshotsByNoteId(qint64)
+    +getSnapshotById(qint64, QString)
+    +deleteSnapshot(qint64)
+    +enforceSnapshotLimit(qint64, int)
+    +revertToSnapshot(Note, qint64, QString)
   }
 
-  class PluginManager {
-    +discoverPlugins()
-    +loadPlugins()
-    +getFormatHandlers()
+  class SnapshotService {
+    +saveSnapshot(Note, QString)
+    +getSnapshotsByNoteId(qint64)
+    +getSnapshotById(qint64, QString)
+    +revertToSnapshot(Note, qint64, QString)
+  }
+
+  class ITrashService {
+    <<interface>>
+    +trashNote(qint64)
+    +restoreNote(qint64)
+    +purgeNote(qint64)
+    +purgeOldTrashedNotes(int)
+    +getTrashedNotes(int, int)
+    +countTrashedNotes()
+    +isNoteTrashed(qint64)
+  }
+
+  class TrashService {
+    +trashNote(qint64)
+    +restoreNote(qint64)
+    +purgeNote(qint64)
+    +getTrashedNotes(int, int)
+  }
+
+  class IFormattingAction {
+    <<interface>>
+    +actionId() QString
+    +actionName() QString
+    +actionToolTip() QString
+    +actionIcon() QIcon
+    +execute(QTextEdit*)
   }
 
   class IPlugin {
-    +formatId()
-    +serialize(Note)
-    +deserialize(Binary)
+    <<interface>>
+    +formatId() QString
+    +displayName() QString
+    +serializeMetadata(INote)
+    +serializePayload(INote)
+    +deserialize(QVariantMap, QByteArray, INote)
+    +supportsMarkdown() bool
+    +supportsPlaintext() bool
+    +getFormattingActions()
   }
 
-  Note "1" --> "0..2" NoteSnapshot : has
+  class PlaintextPlugin {
+    +formatId() QString
+    +displayName() QString
+  }
+
+  class MarkdownPlugin {
+    +formatId() QString
+    +displayName() QString
+  }
+
+  class PluginManager {
+    +instance() PluginManager&
+    +registerPlugin(IPlugin*)
+    +getPlugin(QString) IPlugin*
+    +availableFormats() QStringList
+  }
+
+  class EncryptionService {
+    +encrypt(...)
+    +decrypt(...)
+    +deriveKey(...)
+  }
+
+  class AuditLogger {
+    +instance() AuditLogger*
+    +install()
+    +logFilePath() QString
+  }
+
+  class NoteListController {
+    +reload()
+    +trashSelectedNotes()
+    +noteSaved(Note*)
+  }
+
+  class AuditLogPanel
+  class TrashDialog
+
+  class MainWindow {
+    +MainWindow(QWidget*)
+    +~MainWindow()
+    +saveCurrentNote(bool)
+    +showSnapshotHistoryDialog()
+    +showTrashDialog()
+    +showSettingsDialog()
+  }
+
+  Note ..|> INote
+  Snapshot ..|> ISnapshot
+  SqliteNoteRepository ..|> INoteRepository
+  NoteService ..|> INoteService
+  SnapshotService ..|> ISnapshotService
+  TrashService ..|> ITrashService
+  PlaintextPlugin ..|> IPlugin
+  MarkdownPlugin ..|> IPlugin
+
+  INoteRepository --> INote
+  INoteRepository --> ISnapshot
+  INoteService --> INote
+  ISnapshotService --> ISnapshot
+  ITrashService --> INote
+  IPlugin --> INote
+  IPlugin --> IFormattingAction
+
+  MainWindow --> INoteRepository
+  MainWindow --> INoteService
+  MainWindow --> ISnapshotService
+  MainWindow --> ITrashService
+  MainWindow --> NoteListController
+  MainWindow --> AuditLogPanel
+  MainWindow --> TrashDialog
+  MainWindow --> PluginManager
+  MainWindow --> EncryptionService
+  MainWindow --> AuditLogger
+
+  NoteListController --> INoteService
+  TrashDialog --> ITrashService
+  AuditLogPanel --> AuditLogger
+
   NoteService --> INoteRepository
-  EncryptionService --> INoteRepository
+  SnapshotService --> INoteRepository
+  TrashService --> INoteRepository
+  SqliteNoteRepository --> EncryptionService
+  SqliteNoteRepository --> AuditLogger
   PluginManager --> IPlugin
-  SQLiteNoteRepository ..|> INoteRepository
-  NoteService --> EncryptionService
-  NoteService --> PluginManager
 ```
 
 ---
 
-## 3. Sequence Diagram (Edit + Debounced Autosave + Failure Handling)
+## 3. Object Diagram (Representative Runtime Snapshot)
+
+```mermaid
+flowchart LR
+  mw["mainWindow: MainWindow"]
+  nlc["noteListController: NoteListController"]
+  auditPanel["auditLogPanel: AuditLogPanel"]
+  trashDlg["trashDialog: TrashDialog"]
+
+  noteSvc["noteService: NoteService"]
+  snapshotSvc["snapshotService: SnapshotService"]
+  trashSvc["trashService: TrashService"]
+  repo["noteRepository: SqliteNoteRepository"]
+  pluginMgr["pluginManager: PluginManager::instance()"]
+  auditLogger["auditLogger: AuditLogger::instance()"]
+
+  plaintext["plaintextPlugin: PlaintextPlugin"]
+  markdown["markdownPlugin: MarkdownPlugin"]
+
+  currentNote["currentNote: Note\n(typeId=markdown, secured=false)"]
+  snapshotA["snapshotA: Snapshot\n(latest version)"]
+  snapshotB["snapshotB: Snapshot\n(previous version)"]
+
+  db[(notes.db / snapshots)]
+  log[(audit.log)]
+
+  mw --> nlc
+  mw --> auditPanel
+  mw --> trashDlg
+  mw --> noteSvc
+  mw --> snapshotSvc
+  mw --> trashSvc
+  mw --> pluginMgr
+  mw --> auditLogger
+
+  nlc --> noteSvc
+  trashDlg --> trashSvc
+  auditPanel --> auditLogger
+
+  noteSvc --> repo
+  snapshotSvc --> repo
+  trashSvc --> repo
+  repo --> db
+
+  noteSvc --> currentNote
+  snapshotSvc --> snapshotA
+  snapshotSvc --> snapshotB
+  currentNote --> snapshotA
+  currentNote --> snapshotB
+
+  pluginMgr --> plaintext
+  pluginMgr --> markdown
+  auditLogger --> log
+```
+
+---
+
+## 4. Sequence Diagram (Edit + Debounced Autosave + Failure Handling)
 
 ```mermaid
 sequenceDiagram
@@ -170,7 +395,7 @@ sequenceDiagram
 
 ---
 
-## 4. State Diagram (Note Lifecycle + Trash Retention)
+## 5. State Diagram (Note Lifecycle + Trash Retention)
 
 ```mermaid
 stateDiagram-v2
@@ -188,7 +413,7 @@ stateDiagram-v2
 
 ---
 
-## 5. Component Diagram (Layered Runtime)
+## 6. Component Diagram (Layered Runtime)
 
 ```mermaid
 flowchart TB
@@ -227,7 +452,8 @@ flowchart TB
   end
 
   subgraph Data[Data Layer]
-    SQLiteDB[(SQLite: notes, snapshots, audit_log)]
+    SQLiteDB[(SQLite: notes, snapshots)]
+    AuditLog[(audit.log in app data directory)]
   end
 
   MainWindow --> NoteController
@@ -248,11 +474,12 @@ flowchart TB
   NoteService --> AuditLogger
   NoteService --> ErrorHandling
   PluginManager --> Config
+  AuditLogger --> AuditLog
 ```
 
 ---
 
-## 6. Deployment Diagram (Desktop Runtime)
+## 7. Deployment Diagram (Desktop Runtime)
 
 ```mermaid
 flowchart TB
@@ -273,7 +500,7 @@ flowchart TB
       WAL[(notes.db-wal)]
       SHM[(notes.db-shm)]
       PLUGINS[plugins/\nText, Voice, Secure, Custom]
-      LOGS[logs/\naudit + app logs]
+      LOGS[(audit.log in app data directory)]
       CONFIG[config/settings.json]
     end
   end
@@ -296,10 +523,11 @@ Deployment notes:
 - This diagram models the current offline-first architecture with all persistence on the user workstation.
 - IDs are generated by SQLite (AUTOINCREMENT) and assigned back to model objects after insert.
 - Plugins are loaded dynamically from `plugins/` at runtime.
+- The audit log is written to the Qt app data location, not a repository-local `logs/` folder.
 
 ---
 
-## 7. Activity Diagrams (User Workflows)
+## 8. Activity Diagrams (User Workflows)
 
 ### 7.1 Create Note (Type Selection + Optional Privacy)
 
@@ -396,7 +624,10 @@ flowchart TD
 
 ---
 
-## 8. Modeling Notes and Next UML Iteration
+## 9. Modeling Notes and Next UML Iteration
+
+- Treat these diagrams as living documentation. Update them when storage locations, service boundaries, or test coverage shift.
+- The component and deployment diagrams are the most likely to drift from implementation details.
 
 - Current diagrams assume global search is title-only for scale and memory safety.
 - Delete flow models trash retention with auto purge at 14 days.

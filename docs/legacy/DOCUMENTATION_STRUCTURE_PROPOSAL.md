@@ -57,18 +57,18 @@
 **Purpose:** Current system design, layers, components, dependencies, future extensibility  
 **Submission Requirement:** ✅ Architecture artifact (Professor rubric)  
 **Action:** **VERIFY** content is up-to-date with final Phase 4 implementation:
-  - Confirm 7-layer architecture is accurately described
-  - Include plugin system details (IPlugin, metadata/payload model)
-  - Include INote interface stability note
-  - Reference UML diagrams section
-  - Link to code examples in src/api/, src/model/, src/repository/
+	- Confirm 7-layer architecture is accurately described
+	- Include plugin system details (IPlugin, metadata/payload model)
+	- Include INote interface stability note
+	- Reference UML diagrams section
+	- Link to code examples in src/api/, src/model/, src/repository/
 
 **Consolidation Decision:**  
-  - KEEP `docs/ARCHITECTURE.md` as primary reference
-  - ARCHIVE `docs/ARCHITECTURE_PHASES_1-4.md` → `docs/legacy/` (historical record of design evolution)
-  - ARCHIVE `docs/CLASS_RESPONSIBILITIES_AND_PLUGIN_INTEGRATION.md` → `docs/legacy/` (details now in ARCHITECTURE.md or code comments)
+	- KEEP `docs/ARCHITECTURE.md` as primary reference
+	- ARCHIVE `docs/ARCHITECTURE_PHASES_1-4.md` → `docs/legacy/` (historical record of design evolution)
+	- ARCHIVE `docs/CLASS_RESPONSIBILITIES_AND_PLUGIN_INTEGRATION.md` → `docs/legacy/` (details now in ARCHITECTURE.md or code comments)
 
-**Keep As-Is:** Yes (after verification pass)
+**Keep As-Is:** Yes
 
 ---
 
@@ -101,10 +101,10 @@
 **Purpose:** Sprint timeline, milestones, scope per phase  
 **Submission Requirement:** ✅ Planning artifact; SDLC evidence  
 **Consolidation Decision:**  
-  - KEEP as primary planning document
-  - ARCHIVE `docs/SPRINT_ZERO_PLAN.md` → `docs/legacy/` (initial planning; subsumed by SPRINTS_IMPLEMENTATION_PLAN)
-  - ARCHIVE `docs/IMPLEMENTATION_ROADMAP.md` → `docs/legacy/` (higher-level view; same info in SPRINTS_IMPLEMENTATION_PLAN)
-  - ARCHIVE `docs/QUICK_REFERENCE_PHASES_1-4.md` → `docs/legacy/` (summary; not needed if SPRINTS_IMPLEMENTATION_PLAN is clear)
+	- KEEP as primary planning document
+	- ARCHIVE `docs/SPRINT_ZERO_PLAN.md` → `docs/legacy/` (initial planning; subsumed by SPRINTS_IMPLEMENTATION_PLAN)
+	- ARCHIVE `docs/IMPLEMENTATION_ROADMAP.md` → `docs/legacy/` (higher-level view; same info in SPRINTS_IMPLEMENTATION_PLAN)
+	- ARCHIVE `docs/QUICK_REFERENCE_PHASES_1-4.md` → `docs/legacy/` (summary; not needed if SPRINTS_IMPLEMENTATION_PLAN is clear)
 
 **Keep As-Is:** Yes
 
@@ -115,10 +115,10 @@
 **Purpose:** Test strategy, test cases, execution procedures  
 **Submission Requirement:** ✅ Testing artifact (Professor rubric)  
 **Action:** **POPULATE** with:
-  - Unit test cases for Note, Repository, Plugin managers
-  - Integration test scenarios (create note → save → load → display)
-  - Manual test procedures with expected/actual results
-  - Test execution date, tester, pass/fail status
+	- Unit test cases for Note, Repository, Plugin managers
+	- Integration test scenarios (create note → save → load → display)
+	- Manual test procedures with expected/actual results
+	- Test execution date, tester, pass/fail status
 
 **Owner:** Human (Liam)  
 **Status:** HIGH PRIORITY — evidence of validation
@@ -130,11 +130,11 @@
 **Purpose:** Dated evidence that build succeeds, tests pass, security checks run, demo works  
 **Submission Requirement:** ✅ Working prototype + evidence (Professor rubric)  
 **Action:** **POPULATE** with:
-  - Build execution: cmake build command, timestamp, exit code ✅
-  - Runtime launch: executable runs, sidebar loads, note CRUD works ✅
-  - Test execution: test suite runs, results (pass/fail/skip count)
-  - Security checks: dependency scan results, static analysis output
-  - Demo workflow proof: screenshots or log showing end-to-end scenario
+	- Build execution: cmake build command, timestamp, exit code ✅
+	- Runtime launch: executable runs, sidebar loads, note CRUD works ✅
+	- Test execution: test suite runs, results (pass/fail/skip count)
+	- Security checks: dependency scan results, static analysis output
+	- Demo workflow proof: screenshots or log showing end-to-end scenario
 
 **Owner:** Human (Liam)  
 **Status:** HIGH PRIORITY — submission blocker
@@ -146,17 +146,17 @@
 **Purpose:** Explicit record of AI-assisted work and human validation  
 **Submission Requirement:** ✅ Evidence of AI + human oversight (Professor rubric)  
 **Content:**
-  - **AI-Assisted Artifacts:** Code review feedback, refactoring suggestions, documentation generation, testing strategy
-  - **What Was Accepted:** Reasoning; benefits realized
-  - **What Was Refined:** Changes made; why different from AI suggestion
-  - **What Was Rejected:** Suggestions not adopted; human rationale
-  - **Final Human Decisions:** Key architectural choices, security decisions, scope trade-offs (human-owned)
+	- **AI-Assisted Artifacts:** Code review feedback, refactoring suggestions, documentation generation, testing strategy
+	- **What Was Accepted:** Reasoning; benefits realized
+	- **What Was Refined:** Changes made; why different from AI suggestion
+	- **What Was Rejected:** Suggestions not adopted; human rationale
+	- **Final Human Decisions:** Key architectural choices, security decisions, scope trade-offs (human-owned)
 
 **Example Entries:**
-  - ✅ AI suggested INote interface consolidation → Human accepted; improves plugin extensibility
-  - ✅ AI suggested deprecated API removal → Human refined to keep backward compatibility in Phase 3; accepted majority
-  - ✅ AI suggested VoiceNote polymorphic design (Option B) → Human validated; consistent with INote contract
-  - ❌ AI suggested aggressive optimization → Human rejected (premature optimization); focused on correctness first
+	- ✅ AI suggested INote interface consolidation → Human accepted; improves plugin extensibility
+	- ✅ AI suggested deprecated API removal → Human refined to keep backward compatibility in Phase 3; accepted majority
+	- ✅ AI suggested VoiceNote polymorphic design (Option B) → Human validated; consistent with INote contract
+	- ❌ AI suggested aggressive optimization → Human rejected (premature optimization); focused on correctness first
 
 **Owner:** Human (Liam)  
 **Status:** CRITICAL — must be explicit for defense
@@ -170,25 +170,25 @@
 **Sections:**
 
 #### A. Security Considerations
-  - Current scope: Local SQLite with prepared statements (SQL injection prevention)
-  - Planned Phase 3+: Encryption at rest, multi-user auth
-  - Dependency scanning: Current best practices (NuGet, package managers)
-  - Input validation: Note title/content length limits
-  - Data privacy: Notes stored locally; no cloud transmission (current phase)
+	- Current scope: Local SQLite with prepared statements (SQL injection prevention)
+	- Planned Phase 3+: Encryption at rest, multi-user auth
+	- Dependency scanning: Current best practices (NuGet, package managers)
+	- Input validation: Note title/content length limits
+	- Data privacy: Notes stored locally; no cloud transmission (current phase)
 
 #### B. Deployment Notes
-  - Current: Standalone desktop application (Qt + SQLite bundle)
-  - Build environment: MSVC 2022, CMake 3.25+, Qt 6.x
-  - Runtime requirements: Windows 10+ with UCRT; Qt plugins auto-deployed
-  - Installation: Xcopy deployment (portable executable)
-  - Future: Installer package (NSIS or similar)
+	- Current: Standalone desktop application (Qt + SQLite bundle)
+	- Build environment: MSVC 2022, CMake 3.25+, Qt 6.x
+	- Runtime requirements: Windows 10+ with UCRT; Qt plugins auto-deployed
+	- Installation: Xcopy deployment (portable executable)
+	- Future: Installer package (NSIS or similar)
 
 #### C. Maintenance and Future Work
-  - Phase 3+: NoteService orchestrator (centralize business logic)
-  - Phase 4+: VoiceNote polymorphic support (INote interface ready)
-  - Monitoring: SQLite WAL checkpoint logs (existing in db/)
-  - Schema migrations: Planned for multi-user sync (Phase 4)
-  - Performance tuning: Prepared statement caching is optimized; further work on large note sets (>10K)
+	- Phase 3+: NoteService orchestrator (centralize business logic)
+	- Phase 4+: VoiceNote polymorphic support (INote interface ready)
+	- Monitoring: SQLite WAL checkpoint logs (existing in db/)
+	- Schema migrations: Planned for multi-user sync (Phase 4)
+	- Performance tuning: Prepared statement caching is optimized; further work on large note sets (>10K)
 
 **Owner:** Human (Liam) with AI review  
 **Status:** MEDIUM PRIORITY — rounds out submission quality
@@ -287,36 +287,36 @@ With less than two weeks remaining, prioritize reviewer clarity over perfect arc
 
 ### IMMEDIATE (Blocking Submission)
 1. **Rewrite README.md** (~2 hours)
-   - Setup/build/run walkthrough
-   - 3 usage workflows (Create Note → Save → Load; Assign Plugin → View Formatted; Browse & Search)
-   - Documentation index with links
-   - Tech stack summary
+	 - Setup/build/run walkthrough
+	 - 3 usage workflows (Create Note → Save → Load; Assign Plugin → View Formatted; Browse & Search)
+	 - Documentation index with links
+	 - Tech stack summary
 
 2. **Populate EXECUTION_EVIDENCE.md** (~1 hour)
-   - Add real build command + timestamp + result
-   - Add runtime launch proof + screenshots
-   - Add test execution results
-   - Add security check outputs (dependency scan if available)
+	 - Add real build command + timestamp + result
+	 - Add runtime launch proof + screenshots
+	 - Add test execution results
+	 - Add security check outputs (dependency scan if available)
 
 3. **Create AI_HUMAN_OVERSIGHT.md** (~1 hour)
-   - List AI suggestions from refactoring/docs/architecture work
-   - Document human decisions and rationale
-   - Show what was accepted, refined, rejected and why
+	 - List AI suggestions from refactoring/docs/architecture work
+	 - Document human decisions and rationale
+	 - Show what was accepted, refined, rejected and why
 
 ### HIGH PRIORITY (Submission Quality)
 4. **Create OPERATIONS_NOTES.md** (~1 hour)
-   - Consolidate security, deployment, maintenance from scattered docs
-   - Make explicit for defense discussion
+	 - Consolidate security, deployment, maintenance from scattered docs
+	 - Make explicit for defense discussion
 
 5. **Populate TEST_PLAN.md with evidence** (~2–3 hours)
-   - Add concrete test cases or manual test procedures
-   - Document test execution date, tester, results
-   - Link to any automated test runs or manual test logs
+	 - Add concrete test cases or manual test procedures
+	 - Document test execution date, tester, results
+	 - Link to any automated test runs or manual test logs
 
 ### NICE TO HAVE (Cleanup)
 6. **Move legacy docs to docs/legacy/** (30 min)
-   - Archive the Tier 3 docs listed above
-   - Mark legacy/ folder in README as "historical records"
+	 - Archive the Tier 3 docs listed above
+	 - Mark legacy/ folder in README as "historical records"
 
 7. **Add documentation index to README** (already included in step 1)
 
@@ -365,3 +365,20 @@ Do not spend the remaining time forcing the documentation set down to a perfect 
 ---
 
 **Status:** Ready to execute → Recommend starting with steps 2–4 (README, EXECUTION_EVIDENCE, AI_HUMAN_OVERSIGHT, OPERATIONS_NOTES)
+
+---
+
+## Folder-First Update
+
+After reviewing the final submission requirements, the preferred organization is not a hard delete-down to 12 files. A folder-first layout is a better fit because it preserves useful history while making the defense packet easy to navigate.
+
+Recommended grouping:
+
+- `docs/legacy/` for historical artifacts, AI tracking history, and retired diagrams
+- `docs/requirements/` for PRD, user stories, and requirement baselines
+- `docs/planning/` for roadmaps, sprint plans, backlog, and phase mapping
+- `docs/architecture/` for architecture writeups, design indexes, and UML references
+- `docs/validation/` for traceability, test plans, execution evidence, and AI/human oversight
+- `docs/operations/` for security, deployment, and maintenance notes
+
+This approach aligns directly with the professor's rubric: requirements, planning, architecture/UML, traceability/validation, implementation/testing, and security/maintenance are all easy to find without losing the historical context that explains how the project evolved.
