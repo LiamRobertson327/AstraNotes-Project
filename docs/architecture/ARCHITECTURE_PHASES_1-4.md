@@ -4,161 +4,161 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            MAINWINDOW (UI LAYER)                             │
-│                                                                               │
+│                            MAINWINDOW (UI LAYER)                            │
+│                                                                             │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
 │  │ Phase 1: Note-Type Awareness                                       │     │
 │  │ ┌──────────────────┐  setNoteType()  ┌──────────────────────┐      │     │
-│  │ │ currentNote      │  ───────────→  │ Hide/Show Mode Buttons│      │     │
-│  │ │ currentTypeId    │                │ (Write/Read/Split)   │      │     │
-│  │ └──────────────────┘                └──────────────────────┘      │     │
+│  │ │ currentNote      │  ───────────→   │ Hide/Show Mode Buttons│     │     │
+│  │ │ currentTypeId    │                 │ (Write/Read/Split)   │      │     │
+│  │ └──────────────────┘                 └──────────────────────┘      │     │
 │  │                                             │                      │     │
 │  │                                             ↓                      │     │
 │  │                                  populateFormattingToolbar()       │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
-│                                             │                                │
+│                                           │                                 │
 │  ┌────────────────────────────────────────┼─────────────────────────┐       │
-│  │                                         ↓                         │       │
-│  │  ┌──────────────────────────────────────────────────────────┐   │       │
-│  │  │ Phase 3: Formatting Toolbar                             │   │       │
-│  │  │                                                           │   │       │
-│  │  │  formattingToolbar: QToolBar                            │   │       │
-│  │  │  ├── Gets actions from PluginManager                    │   │       │
-│  │  │  ├── Connects to IFormattingAction::execute()           │   │       │
-│  │  │  └── Focus-aware: targets writeEditor or splitEditor    │   │       │
-│  │  └──────────────────────────────────────────────────────────┘   │       │
-│  │                                                                   │       │
+│  │                                        ↓                         │       │
+│  │  ┌──────────────────────────────────────────────────────────┐    │       │
+│  │  │ Phase 3: Formatting Toolbar                              │    │       │
+│  │  │                                                          │    │       │
+│  │  │  formattingToolbar: QToolBar                             │    │       │
+│  │  │  ├── Gets actions from PluginManager                     │    │       │
+│  │  │  ├── Connects to IFormattingAction::execute()            │    │       │
+│  │  │  └── Focus-aware: targets writeEditor or splitEditor     │    │       │
+│  │  └──────────────────────────────────────────────────────────┘    │       │
+│  │                                                                  │       │
 │  │  Editors:                                                        │       │
-│  │  ├── writeEditor: QTextEdit (Write Mode)                        │       │
-│  │  ├── readViewer: QTextBrowser (Read Mode)                       │       │
-│  │  └── splitEditor/splitPreview: Split Mode                       │       │
-│  │                                                                   │       │
-│  │  Control: QButtonGroup (exclusive mode selection)               │       │
-│  │  ├── btnWrite → viewStack->setCurrentIndex(0)                   │       │
-│  │  ├── btnRead  → render markdown, setCurrentIndex(1)            │       │
-│  │  └── btnSplit → sync editors, setCurrentIndex(2)               │       │
+│  │  ├── writeEditor: QTextEdit (Write Mode)                         │       │
+│  │  ├── readViewer: QTextBrowser (Read Mode)                        │       │
+│  │  └── splitEditor/splitPreview: Split Mode                        │       │
+│  │                                                                  │       │
+│  │  Control: QButtonGroup (exclusive mode selection)                │       │
+│  │  ├── btnWrite → viewStack->setCurrentIndex(0)                    │       │
+│  │  ├── btnRead  → render markdown, setCurrentIndex(1)              │       │
+│  │  └── btnSplit → sync editors, setCurrentIndex(2)                 │       │
 │  └───────────────────────────────────┬──────────────────────────────┘       │
-│                                      ↓                                       │
+│                                      ↓                                      │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
 │  │ Phase 4: Persistence Layer                                         │     │
 │  │                                                                    │     │
-│  │  Save Button Clicked                                              │     │
+│  │  Save Button Clicked                                               │     │
 │  │         │                                                          │     │
-│  │         ├─→ Create/Update currentNote object                     │     │
-│  │         ├─→ Populate title & content from editors                │     │
-│  │         └─→ noteRepository->save(currentNote)                    │     │
+│  │         ├─→ Create/Update currentNote object                       │     │
+│  │         ├─→ Populate title & content from editors                  │     │
+│  │         └─→ noteRepository->save(currentNote)                      │     │
 │  │                     │                                              │     │
-│  │                     └─→ Save Indicator Status Update             │     │
-│  │                         (Green=Saved, Red=Error, Pink=Unsaved)   │     │
-│  │                         └─→ Reset after 2 seconds                │     │
+│  │                     └─→ Save Indicator Status Update               │     │
+│  │                         (Green=Saved, Red=Error, Pink=Unsaved)     │     │
+│  │                         └─→ Reset after 2 seconds                  │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
-│                                                                               │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
                                      ↓
           ┌──────────────────────────────────────────────────────────┐
           │           PLUGIN MANAGER (SINGLETON)                     │
-          │                                                           │
+          │                                                          │
           │  PluginManager::instance()                               │
           │  ├── plugins: QMap<QString, IPlugin*>                    │
           │  ├── registerPlugin(IPlugin *plugin)                     │
           │  ├── getPlugin(const QString &formatId)                  │
           │  └── availableFormats()                                  │
-          │                                                           │
+          │                                                          │
           │  Registered Plugins:                                     │
           │  ├── "plaintext" → PlaintextPlugin                       │
           │  └── "markdown"  → MarkdownPlugin                        │
-          │                                                           │
+          │                                                          │
           └───────────────────┬──────────────────────────────────────┘
                               ↓
           ┌──────────────────────────────────────────────────────────┐
           │              PLUGIN LAYER (Phase 2)                      │
-          │                                                           │
+          │                                                          │
           │  ┌─────────────────────────────────────────────────────┐ │
           │  │ IPlugin Interface                                   │ │
           │  │ ├── formatId(): QString                             │ │
           │  │ ├── displayName(): QString                          │ │
           │  │ ├── serialize(content): QString                     │ │
-          │  │ ├── deserialize(stored): QString                   │ │
+          │  │ ├── deserialize(stored): QString                    │ │
           │  │ ├── render(content): QString                        │ │
           │  │ ├── supportsMarkdown(): bool                        │ │
           │  │ ├── supportsPlaintext(): bool                       │ │
           │  │ └── getFormattingActions(): QList<IFormattingAction*> │
           │  └─────────────────────────────────────────────────────┘ │
-          │                                                           │
+          │                                                          │
           │  ┌──────────────────────┐  ┌──────────────────────────┐  │
           │  │ PlaintextPlugin      │  │ MarkdownPlugin           │  │
           │  │ ├── formatId: "pt"   │  │ ├── formatId: "md"       │  │
           │  │ ├── No actions       │  │ ├── 8 Formatting Actions │  │
           │  │ └── Text-only        │  │ └── Full markdown        │  │
           │  └──────────────────────┘  └────────┬─────────────────┘  │
-          │                                       ↓                    │
-          │                        ┌──────────────────────────────┐   │
-          │                        │ Formatting Actions (Phase 3) │   │
-          │                        │ ├── BoldAction               │   │
-          │                        │ ├── ItalicAction             │   │
-          │                        │ ├── BulletListAction         │   │
-          │                        │ ├── NumberedListAction       │   │
-          │                        │ ├── HeadingAction (x3)       │   │
-          │                        │ ├── CodeBlockAction          │   │
-          │                        │ └── LinkAction               │   │
-          │                        │                              │   │
-          │                        │ Each implements:             │   │
-          │                        │ ├── actionId()               │   │
-          │                        │ ├── actionName()             │   │
-          │                        │ ├── actionToolTip()          │   │
-          │                        │ ├── actionIcon()             │   │
-          │                        │ └── execute(QTextEdit*)      │   │
-          │                        └──────────────────────────────┘   │
-          │                                                           │
-          └─────────────────────────────────────────────────────────┘
+          │                                       ↓                  │
+          │                        ┌──────────────────────────────┐  │
+          │                        │ Formatting Actions (Phase 3) │  │
+          │                        │ ├── BoldAction               │  │
+          │                        │ ├── ItalicAction             │  │
+          │                        │ ├── BulletListAction         │  │
+          │                        │ ├── NumberedListAction       │  │
+          │                        │ ├── HeadingAction (x3)       │  │
+          │                        │ ├── CodeBlockAction          │  │
+          │                        │ └── LinkAction               │  │
+          │                        │                              │  │
+          │                        │ Each implements:             │  │
+          │                        │ ├── actionId()               │  │
+          │                        │ ├── actionName()             │  │
+          │                        │ ├── actionToolTip()          │  │
+          │                        │ ├── actionIcon()             │  │
+          │                        │ └── execute(QTextEdit*)      │  │
+          │                        └──────────────────────────────┘  │
+          │                                                          │
+          └──────────────────────────────────────────────────────────┘
                                      ↓
           ┌──────────────────────────────────────────────────────────┐
           │            REPOSITORY LAYER (Phase 4)                    │
-          │                                                           │
-          │  ┌──────────────────────────────────────────────────┐   │
-          │  │ INoteRepository (Interface)                      │   │
-          │  │ ├── save(Note &note): bool                       │   │
-          │  │ ├── getById(qint64 id): Note*                    │   │
-          │  │ ├── getAll(): QVector<Note*>                     │   │
-          │  │ ├── deleteById(qint64 id): bool                  │   │
-          │  │ ├── update(const Note &note): bool               │   │
-          │  │ ├── searchByTitle(query): QVector<Note*>         │   │
-          │  │ └── searchByContent(query): QVector<Note*>       │   │
-          │  └──────────────────────────────────────────────────┘   │
-          │                              ↓                            │
-          │  ┌──────────────────────────────────────────────────┐   │
-          │  │ SqliteNoteRepository                             │   │
-          │  │ ├── Constructor: Initialize WAL mode            │   │
-          │  │ ├── createTablesIfNeeded()                       │   │
-          │  │ ├── Prepared statements (SQL injection safe)    │   │
-          │  │ ├── AUTOINCREMENT ids                            │   │
-          │  │ ├── Modified timestamp tracking                  │   │
-          │  │ └── Index on title for search performance       │   │
-          │  └──────────────────────────────────────────────────┘   │
-          │                                                           │
-          └─────────────────────────────────────────────────────────┘
+          │                                                          │
+          │  ┌──────────────────────────────────────────────────┐    │
+          │  │ INoteRepository (Interface)                      │    │
+          │  │ ├── save(Note &note): bool                       │    │
+          │  │ ├── getById(qint64 id): Note*                    │    │
+          │  │ ├── getAll(): QVector<Note*>                     │    │
+          │  │ ├── deleteById(qint64 id): bool                  │    │
+          │  │ ├── update(const Note &note): bool               │    │
+          │  │ ├── searchByTitle(query): QVector<Note*>         │    │
+          │  │ └── searchByContent(query): QVector<Note*>       │    │
+          │  └──────────────────────────────────────────────────┘    │
+          │                              ↓                           │
+          │  ┌──────────────────────────────────────────────────┐    │
+          │  │ SqliteNoteRepository                             │    │
+          │  │ ├── Constructor: Initialize WAL mode             │    │
+          │  │ ├── createTablesIfNeeded()                       │    │
+          │  │ ├── Prepared statements (SQL injection safe)     │    │
+          │  │ ├── AUTOINCREMENT ids                            │    │
+          │  │ ├── Modified timestamp tracking                  │    │
+          │  │ └── Index on title for search performance        │    │
+          │  └──────────────────────────────────────────────────┘    │
+          │                                                          │
+          └──────────────────────────────────────────────────────────┘
                                      ↓
           ┌──────────────────────────────────────────────────────────┐
           │              DATABASE LAYER (SQLite)                     │
-          │                                                           │
+          │                                                          │
           │  notes.db (WAL Mode)                                     │
           │  │                                                       │
           │  └── Table: notes                                        │
           │      ├── id: INTEGER PRIMARY KEY AUTOINCREMENT           │
-          │      ├── typeId: TEXT (plaintext/markdown)              │
+          │      ├── typeId: TEXT (plaintext/markdown)               │
           │      ├── title: TEXT                                     │
           │      ├── content: TEXT                                   │
           │      ├── created_at: DATETIME                            │
           │      ├── modified_at: DATETIME                           │
           │      │                                                   │
           │      └── Index: idx_title (ON title)                     │
-          │                                                           │
+          │                                                          │
           │  Features:                                               │
           │  ├── WAL mode: Crash recovery guarantee                  │
           │  ├── Prepared statements: No SQL injection               │
-          │  ├── Concurrent access: Readers don't block writers     │
-          │  └── Auto-incrementing: Unique IDs per note             │
-          │                                                           │
+          │  ├── Concurrent access: Readers don't block writers      │
+          │  └── Auto-incrementing: Unique IDs per note              │
+          │                                                          │
           └──────────────────────────────────────────────────────────┘
 ```
 
@@ -325,4 +325,3 @@ Note: Plugins are owned by PluginManager (no cleanup needed)
 4. **Encryption**: Wrap serialize/deserialize in plugins with encryption layer
 5. **Search Backends**: Enhance searchByTitle/Content with FTS5 or Elasticsearch
 6. **Export Formats**: Add export plugins (PDF, HTML, etc.)
-

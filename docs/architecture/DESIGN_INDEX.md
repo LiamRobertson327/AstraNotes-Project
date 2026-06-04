@@ -1,14 +1,16 @@
 # AstraNotes Architecture & Design Documentation Index
 
 **Last Updated**: April 2, 2026  
-**Project**: AstraNotes - High-Performance C++20 Note-Taking Application  
-**Version**: Architecture v1.0  
+**Project**: AstraNotes - High-Performance C++23 Note-Taking Application  
+**Version**: Architecture v1.0
+
+> **After Project Completion Note**: This document makes some assumptions from the old `ARCHITECTURE.md` before it was simplified.  Regardless this file is mostly for navigation of how other files work together and provides other high-level information regarding the project.
 
 ## Documentation Consistency Baseline (April 25, 2026)
 
 To reduce drift, use this precedence when documents disagree:
 
-1. `REQUIREMENTS_UPDATED.md` + `INITIAL_REQUIREMENTS.md` (product requirements and constraints)
+1. `INITIAL_REQUIREMENTS_REVISED.md` (product requirements and constraints)
 2. `UML_STARTER_DIAGRAMS.md` (behavioral and structural modeling baseline)
 3. `ARCHITECTURE.md` (implementation architecture)
 4. `IMPLEMENTATION_ROADMAP.md` (phase execution plan)
@@ -337,14 +339,8 @@ Week 14+   | ✅ Polish            (Docs, Release)
 
 ## 📞 FAQ
 
-**Q: How long will full implementation take?**  
-A: ~14 weeks (40-50 development days) depending on team size and experience.
-
 **Q: Can we parallelize development?**  
 A: Yes! After Phase 2, different teams can work on Services (Phase 3), Plugins (Phase 4), and UI (Phase 5) in parallel.
-
-**Q: Why std::expected instead of exceptions?**  
-A: Explicit error handling, composable operations, no unwinding overhead—better for embedded systems.
 
 **Q: Can we swap SQLite for another database?**  
 A: Yes! The Repository pattern allows different implementations (PostgreSQL, MongoDB, etc.) without changing services.
@@ -429,5 +425,3 @@ This index should be your go-to reference for:
 ---
 
 **Welcome to AstraNotes! This modular, production-grade architecture will serve as your foundation for building a scalable, secure, and extensible note-taking application.**
-
-**Start with Phase 1 and build systematically. You've got this! 🚀**

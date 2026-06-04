@@ -7,6 +7,8 @@
 
 > **This is a SIMPLIFIED version of the architecture that maintains all constraints while eliminating unnecessary complexity. 50% fewer components, equal functionality.**
 
+> **After Project Completion Note**: At a high level, this architecture was followed to create AstraNote, however not strictly.  Specific implementation or guidlines were changed in certain layers as development occured.  One example is that `std::expected<T, Error>` was not used for testing which was initially planned for in the Infrastructure layer.  Another example is the naming convention for file strcuture and certain features were also changed.
+
 ---
 
 ## 1. EXECUTIVE SUMMARY
@@ -289,6 +291,7 @@ The deployed application is organized into platform-specific executable and plug
 - `etc/`: system-level configuration
 - `db/`: user-writable SQLite database
 
+Note: This exact structure was not strictly followed
 ---
 
 ## 8. DEPENDENCY MAP
@@ -297,6 +300,7 @@ External dependencies include Qt 6 for UI, SQLite for persistence, OpenSSL for e
 
 Internal module dependencies include the core utilities, domain model, repository layer, service layer, plugin system, UI layer, and test harness.
 
+Note: This exact structure was not strictly followed
 ---
 
 ## 9. BUILD & DEPLOYMENT

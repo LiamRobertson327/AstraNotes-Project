@@ -3,6 +3,8 @@
 ## Why this guide exists
 This document maps the current architecture to concrete responsibilities so the project stays aligned with the interface-first design that is actually implemented in the codebase.
 
+> **After Project Completion Note**: This document was created near the end of the project completion and is an accurate representation of the final project form for the files discussed.
+
 ## Current architecture at a glance
 
 - `MainWindow` is the composition root. It creates the concrete repository and service implementations and wires them into the UI.
@@ -85,15 +87,6 @@ This document maps the current architecture to concrete responsibilities so the 
 - The project exposes `IPlugin` as an extension contract.
 - The data model includes note type information that can be used for future routing.
 - The architecture keeps room for a plugin layer without forcing the UI or repository to know plugin internals.
-
-### What is not currently in the codebase snapshot
-- There is no active `PluginManager` implementation in the current source tree.
-- There is no runtime plugin registry or discovery flow wired into `MainWindow` or the services.
-- Plugin execution is therefore a design extension point, not a current runtime dependency.
-
-### Implication for the architecture
-- If plugin loading is added later, it should sit behind its own abstraction and remain outside the UI and repository layers.
-- `NoteService` should continue to orchestrate the note workflow, while a future plugin layer handles only plugin-specific conversion.
 
 ## Encryption boundary
 

@@ -1,5 +1,7 @@
 # AstraNotes: Simplified Project Structure
 
+> **After Project Completion Note**: This file was created near the start of implementation.  The project does not stricly follow the structure discussed in the beginning of the project, however it is mostly correct.  The complete, finalized project structure is given at the end of the file.
+
 ## Alignment Note (April 25, 2026)
 
 This file contains target-state structure plus aspirational module details. For implementation decisions, prioritize:
@@ -21,42 +23,8 @@ The simplified project layout is organized by architectural layer, with a shallo
 - `src/ui/`: (Contains mainwindow.cpp/h/ui)
 - `src/plugin/`, `src/repository/`, `src/service/`: (Empty for now)
 - `tests/`: unit, integration, and performance tests.
-- `resources/`: default config, schema, icons, styles, and translations.
 
 The architecture intentionally avoids a monolithic in-memory `NoteCollection`; persistent note storage is handled through SQLite and retrieved on demand.
-
-│   └── translations/                # i18n files
-│       ├── astranotts_en.ts
-│       ├── astranotts_es.ts
-│       └── astranotts_fr.ts
-│
-├── docs/                            # Documentation (SIMPLIFIED)
-│   ├── ARCHITECTURE.md              # Architecture overview
-│   ├── DEVELOPMENT.md               # Development guide
-│   ├── PLUGIN_GUIDE.md              # Plugin development
-│   └── images/                      # Documentation images
-│       ├── architecture_diagram.png
-│       ├── system_layers.png
-│       └── plugin_system.png
-│
-├── scripts/                         # Build & utility scripts
-│   ├── build.sh
-│   ├── build.bat
-│   ├── test.sh
-│   └── test.bat
-│
-├── build/                           # Build output (generated, in .gitignore)
-│   ├── x64/
-│   │   ├── Debug/
-│   │   └── Release/
-│   └── arm64/
-│
-├── .gitignore
-├── .clang-format
-├── .clang-tidy
-└── .editorconfig
-
----
 
 ## Module Dependency Graph
 
@@ -67,33 +35,7 @@ Key dependencies include:
 - `NoteService`, `SearchService`, and `EncryptionService`
 - UI controllers and Qt model adapters
 - `std::expected<T, Error>` for explicit error propagation
-- Qt platform abstractions in `ui/utils`
-
----
-
-## File Naming Conventions
-
-### Headers (.h)
-- Interface files: `IPluginManager.h`
-- Implementation classes: `Note.h`
-- Utilities: `Types.h`, `Logger.h`
-- No inline implementations (separate `.cpp`)
-
-### Implementation (.cpp)
-- Match header name: `Note.cpp` ↔ `Note.h`
-- Include corresponding header first
-
-### Tests
-- Unit: `test_note.cpp` (tests `Note.h`)
-- Fixture: `NoteTestFactory.h` (helper class)
-- Mock: `MockRepository.h` (mock implementation)
-
-### Resources
-- Config: YAML/JSON format
-- Images: PNG (16x32x64 for icons), SVG for scalables
-- Translations: Qt `.ts` (Translation Source)
-
----
+- Qt platform abstractions in `ui`
 
 ## Build Targets (Simplified)
 
@@ -111,7 +53,7 @@ The build order is core first, followed by model, repository, service, plugin, a
 
 | Module | Responsibility | Key Concepts | Dependencies |
 |--------|-----------------|-------------|--------------|
-| **core** | Shared utilities | `std::expected`, Error, Logger, Config | STL only |
+| **core** | Shared utilities | Error, Logger, Config | STL only |
 | **model** | Domain objects | Note hierarchy and metadata | core |
 | **repository** | Data persistence | `INoteRepository`, SQLite persistence | core, model |
 | **service** | Business logic | NoteService, SearchService, EncryptionService, CacheManager | core, model, repository |
@@ -145,7 +87,6 @@ The root CMake configuration sets the project to C++23, enables Qt auto tools, a
 ### Repository Module
 - ✅ `INoteRepository` interface
 - ✅ `SQLiteNoteRepository` (optimized for 10K+)
-- ✅ `InMemoryNoteRepository` (for testing)
 - ✅ `QueryBuilder` with WHERE/ORDER BY/LIMIT
 - ✅ Database migrations framework
 
@@ -170,21 +111,88 @@ The root CMake configuration sets the project to C++23, enables Qt auto tools, a
 - ✅ `NoteController`, `SearchController`
 - ✅ Qt models for MVC adapters
 
----
-
-## Next Steps
-
-1. **Set up CMake**: Create modular `CMakeLists.txt` with subdirectories
-2. **Implement Core**: `std::expected<T, Error>`, `Error`, `Logger`, `Config`
-3. **Build Model**: `Note` hierarchy and metadata
-4. **Add Repository**: SQLite with migrations
-5. **Implement Services**: Business logic layer
-6. **Wire Plugin System**: `IPlugin` + manager
-7. **Create UI**: Qt6 views and controllers
-8. **Add Tests**: Unit + integration + perf
-9. **Cross-platform**: Abstraction layer for Windows/Mac/Linux
-10. **Package**: Create installers for each OS
-
----
 
 This structure provides a solid foundation for a professional, scalable C++23 application.
+## 🗂️ Repository Structure
+```
+AstraNotes-Project
+├── src/
+│   ├── api/
+│   │   ├── INote.h
+│   │   ├── IPlugin.h
+│   │   └── ISnapshot.h
+│   ├── app/
+│   │   └── main.cpp
+│   ├── model/
+│   │   ├── Note.h
+│   │   ├── Note.cpp
+│   │   ├── Snapshot.h
+│   │   └── Snapshot.cpp
+│   ├── plugins/
+│   │   ├── IFormattingAction.h
+│   │   ├── MarkdownFormattingPlugin.h
+│   │   ├── MarkdownPlugin.h
+│   │   ├── MarkdownPlugin.cpp
+│   │   ├── PlaintextPlugin.h
+│   │   ├── PlaintextPlugin.cpp
+│   │   ├── PluginManager.h
+│   │   └── PluginManager.cpp
+│   ├── repository/
+│   │   ├── INoteRepository.h
+│   │   └── SqliteNoteRepository.h/.cpp
+│   ├── service/
+│   │   ├── interfaces/
+│   │   │   ├── INoteService.h
+│   │   │   ├── ISnapshotService.h
+│   │   │   └── ITrashService.h
+│   │   └── impl/
+│   │       ├── NoteService.h/.cpp
+│   │       ├── SnapshotService.h/.cpp
+│   │       └── TrashService.h/.cpp
+│   ├── crypto/
+│   │   ├── EncryptionService.h
+│   │   └── EncryptionService.cpp
+│   ├── logging/
+│   │   ├── AuditLogger.h
+│   │   └── AuditLogger.cpp
+│   └── ui/
+│       ├── mainwindow.ui
+│       ├── mainwindow.h
+│       ├── mainwindow.cpp
+│       ├── NoteListController.h/.cpp
+│       ├── AuditLogPanel.h/.cpp
+│       ├── SettingsDialog.h/.cpp
+│       └── TrashDialog.h/.cpp
+├── tests/
+│   ├── integration/
+│   │   ├── note_trash_integration_tests.cpp
+│   │   └── repoistory_roundtrip_integration_test.cpp
+│   ├── performance/
+│   │   └── nfr_performance_tests.cpp
+│   ├── smoke/
+│   │   ├── mainwindow_quick_tests.cpp
+│   │   ├── SmokeTests.cpp
+│   │   └── trash_feature_smoke.cpp
+│   └── unit/
+│       ├── concurrency_tests.cpp
+│       ├── encryption_failure_tests.cpp
+│       ├── note_deletion_lifecycle_tests.cpp
+│       ├── note_service_password_unit_tests.cpp
+│       ├── note_service_trash_unit_tests.cpp
+│       ├── repository_failure_tests.cpp
+│       ├── search_edgecases_tests.cpp
+│       ├── snapshot_service_tests.cpp
+│       └── trash_service_tests.cpp
+├── docs/
+│   ├── architecture/
+│   ├── legacy/
+│   ├── operations/
+│   ├── planning/
+│   ├── requirements/
+│   ├── UML diagrams/
+│   └── validaiton/
+├── CMakeLists.txt
+├── .gitignore
+├── LICENSE
+└── README.md
+```
