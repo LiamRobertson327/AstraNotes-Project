@@ -41,12 +41,12 @@ public:
 private:
     // --- Top Header ---
     QWidget *centralWidget;
-        // Repository for persistence (Phase 4)
-        INoteRepository *noteRepository;
-        INoteService *noteService;
-        ISnapshotService *snapshotService;
-        ITrashService *trashService;
-        NoteListController *noteListController;
+    // Repository for persistence (Phase 4)
+    INoteRepository *noteRepository;
+    INoteService *noteService;
+    ISnapshotService *snapshotService;
+    ITrashService *trashService;
+    NoteListController *noteListController;
     QLineEdit *searchBar;
     QPushButton *searchPrevButton;
     QPushButton *searchNextButton;
