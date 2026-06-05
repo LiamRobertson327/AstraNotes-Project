@@ -1,9 +1,9 @@
 # AstraNotes Product Requirements Document (PRD)
 
 **Product**: AstraNotes
-**Version**: 1.0
-**Date**: 2026-05-04
-**Status**: Draft
+**Version**: 2.0
+**Date**: 2026-06-04
+**Status**: Final
 
 ---
 
@@ -114,11 +114,11 @@ The following are not currently primary product goals:
 
 ### 8.4 Security
 - Encrypt private notes.
-- Use password-based key derivation.
+- Use Argon2ID + salt to derive a key from a password.
 - Maintain audit logs and secure storage practices.
 
 ### 8.5 Extensibility
-- Load plugins at runtime.
+- PluginManager singleton will dynamically load plugins at runtime to give user access to various note formats (Currently implemented with cpp/h files, but plugins are planned to move to dll loading).
 - Route note behavior using type identifiers.
 - Support alternate formats such as voice notes.
 
@@ -132,8 +132,8 @@ The following are not currently primary product goals:
 ## 9. Success Metrics
 
 AstraNotes will be considered successful when the following are true:
-- Save operations complete within the target threshold.
-- Note load operations complete within the target threshold.
+- Save operations complete within 5-20ms.
+- Note load operations complete within O(n) complexity with runtime of < 100ms for 10,000 notes | n = number of notes.
 - Search across 10,000 notes remains responsive.
 - Private-note encryption and decryption work correctly.
 - Crash recovery preserves data consistency.
@@ -145,19 +145,19 @@ AstraNotes will be considered successful when the following are true:
 ## 10. Requirements Reference
 
 The authoritative detailed requirements live in:
-- `docs/INITIAL_REQUIREMENTS_REVISED.md`
+- `docs/requirements/INITIAL_REQUIREMENTS_REVISED.md`
 
 Supporting planning and traceability documents include:
-- `docs/REQUIREMENT_TRACEABILITY_MATRIX.md`
-- `docs/User_stories.md`
-- `docs/BACKLOG.md`
-- `docs/SPRINTS_IMPLEMENTATION_PLAN.md`
-- `docs/TEST_PLAN.md`
-- `docs/EXECUTION_EVIDENCE.md`
-- `docs/RELEASE_GATES.md`
-- `docs/CUSTOMER_ACCEPTANCE_AND_DOD.md`
-- `docs/TRACEABILITY_CHAIN.md`
-- `docs/DEVELOPMENT_CHECKPOINT.md`
+- `docs/validation/REQUIREMENT_TRACEABILITY_MATRIX.md`
+- `docs/requirements/User_stories.md`
+- `docs/planning/BACKLOG.md`
+- `docs/planning/SPRINTS_IMPLEMENTATION_PLAN.md`
+- `docs/validation/TEST_PLAN.md`
+- `docs/validation/EXECUTION_EVIDENCE.md`
+- `docs/planning/RELEASE_GATES.md`
+- `docs/requirements/CUSTOMER_ACCEPTANCE_AND_DOD.md`
+- `docs/validation/TRACEABILITY_CHAIN.md`
+- `docs/planning/DEVELOPMENT_CHECKPOINT.md`
 
 ---
 

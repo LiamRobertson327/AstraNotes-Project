@@ -28,7 +28,7 @@ Release gates connect the planned work to the actual evidence collected during i
 
 ### Traceability Gate
 - Work can be traced from requirement to user story to backlog to sprint to test evidence.
-- Execution evidence is recorded in `docs/EXECUTION_EVIDENCE.md` or equivalent artifacts.
+- Execution evidence is recorded in `docs/validation/EXECUTION_EVIDENCE.md` or equivalent artifacts.
 
 ---
 

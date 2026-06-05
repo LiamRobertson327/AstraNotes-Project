@@ -130,9 +130,10 @@ This document contains 8 user stories derived from the initial requirement set, 
 
 **Mapped to Phase**: Phase 3 (Services) - NoteService deletion logic.
 **Acceptance Criteria**:
-
-
-## Summary
+- The system shall allow for selecting one or more notes and deleting them to the trash using a soft delete mechanism.
+- Deleted notes shall remain in the trash until automatically deleted by the system according to the retention policy or manually deleted by the user.
+- Trashed notes shall not show up on the side bar that display the notes the user has.
+- On failure, the system shall log and display a non-blocking warning to the user and the application continues to run.
 
 ### Story 9: Plugin Validation and Missing-Plugin Fallback
 **As a** developer/system, **I want** plugins to be validated on load and missing plugins to be handled gracefully, **so that** an invalid or missing plugin does not crash the application or leave notes inaccessible.

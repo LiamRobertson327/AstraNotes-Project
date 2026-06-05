@@ -1,3 +1,5 @@
+> **Note on requirement Length**: Traditionally, requirements should be small and handle only one task.  These requirements intentionally break from that tradition and are slightly longer.  This approach was taken to balance traceability, clarity, and manageability.  These larger requirements reduce fragmentation across smaller atomic requirements, while still maintaining a clear mapping to the implementation, testing, and validation artifacts.
+
 ## **Functional Requirements**
 - FR1: The system shall allow users to create and edit notes identified by a unique ID, with optional UTF-8 title (0-500 characters, configurable) and optional UTF-8 body (0-10 MB, configurable); provide manual save via a Save button and optional auto-save via a 500 ms debounced QTimer that resets on each keystroke, show a persistent unsaved-changes indicator when auto-save is disabled and edits exist, persist all note/plugin formats to SQLite using transactional writes, and on save failure log the error, notify the user non-blockingly, preserve in-memory edits, and continue running without crashing
 
@@ -5,7 +7,7 @@
 
 - FR3: The system shall provide in-note search for the currently open note body (and title, optional), performing case-insensitive substring matching by default. Results shall update in real time as the user types, highlight all matches, display total match count and current match index, and support next/previous navigation. The search operation shall complete within 50 ms for notes up to 10 MB on supported target hardware. If the query is empty, all highlights are cleared; if no matches are found, the UI displays “No matches.” The feature shall not block editing or cause application crashes.
 
-- FR4: The system shall allow users to search across all saved notes by title only, without loading full note bodies into memory. Search shall operate on indexed title fields in SQLite, return matching notes with their titles and metadata, and complete within the defined performance target for large note sets.
+- FR4: The system shall allow users to search across all saved notes by title only, without loading full note bodies into memory. Search shall operate on indexed title fields in SQLite, return matching notes with their titles and metadata, and complete within the defined performance target for large note sets (<100ms for 10,000 notes).
 
 - FR5: The system shall store all notes durably in SQLite using write-ahead logging (WAL) mode, ensuring that on-disk writes are flushed before the save operation completes to the user. On application crash or unexpected shutdown, the database shall recover uncommitted transactions from the journal and restore a consistent state on next startup. No note data created or edited in the session shall be lost due to application or system failure.
 
@@ -25,7 +27,7 @@
 - NFR3: The system shall implement crash recovery by using SQLite WAL mode; on restart, any incomplete transactions are rolled back and the database is recovered to a consistent state. The system shall support graceful shutdown by completing in-flight save operations, flushing open transactions, and closing the database cleanly before exit. Unsaved edits in the current session that have not been auto-saved shall be preserved in an in-memory edit state; on restart, the user is prompted to recover unsaved changes or discard them.
 
 ## **Security, Privacy, Reliability, and Governance Requirements**
-- SR1: All notes marked as private shall be encrypted using AES-256-GCM with a 256-bit key derived from the user's password using Argon2id (parameters: time cost 2, memory cost 65536 KiB, parallelism 1). The initialization vector (IV) shall be randomly generated per encryption and stored alongside the ciphertext. Decryption shall succeed only if the user provides the correct password.
+- SR1: All notes marked as private shall be encrypted using AES-256-GCM with a 256-bit key derived from the user's password using Argon2id (parameters: time cost 3, memory cost 65536 KiB, parallelism 1). The initialization vector (IV) shall be randomly generated per encryption and stored alongside the ciphertext. Decryption shall succeed only if the user provides the correct password.
 
 - SR2: The system shall maintain an append-only immutable audit log recording all create, update, delete, and encryption operations on notes, along with timestamps and operation details. Log entries cannot be modified or deleted once written. Logs shall be stored in a dedicated database table or file and retained for the application lifetime. Access to logs is restricted to admin/diagnostic contexts. Log content shall be redacted to exclude sensitive data (note body content, decrypted private data, passwords).
 

@@ -4,6 +4,8 @@
 
 **Use**: Review this document at the end of each story or sprint to confirm that the work is complete, testable, and acceptable for release.
 
+> **After Project Completion Note**: While each story has an acceptance sign-off, this was added to show how a Definition of Done document would be used.  Tracking of which user stories and requiremtns were complete was done in another document and used the DoD criteria here.
+
 ---
 
 ## Common Definition of Done
