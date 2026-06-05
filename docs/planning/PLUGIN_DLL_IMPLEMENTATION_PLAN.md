@@ -1,5 +1,7 @@
 # Dynamic Plugin (DLL) Implementation Plan
 
+> **After Project Completion Note**: This was not completed.  The project has a plugin system, however it uses h/cpp files instead of loading dlls.  Plugin migration to dlls is planned for a future release and it will migrate into the code without major issues or other merge blockers.
+
 Goal
 ----
 Add support for loading runtime plugins (DLL/shared libraries) using Qt's plugin infrastructure (QPluginLoader). This will allow developers to ship new note formats (e.g., voice notes) as separate libraries which AstraNotes can discover and load at runtime.

@@ -4,6 +4,8 @@
 
 ---
 
+> **After Project Completion Note**: This was initially used for tracking document creation, but as development accelerated, logging each file stopped as files kept changing.
+
 ## How to use this log
 
 - Add a new entry whenever requirements, planning docs, implementation notes, or code are changed.

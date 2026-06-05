@@ -74,14 +74,14 @@ Use this sequence when auditing the documentation before development:
 	- Confirm the sign-off sections are usable for customer acceptance.
 
 10. `docs/TRACEABILITY_CHAIN.md`
-	 - Confirm the end-to-end trace from requirement to release gate.
+ 	- Confirm the end-to-end trace from requirement to release gate.
 
 11. `docs/RELEASE_GATES.md`
-	 - Review the go/no-go criteria.
-	 - Make sure release decisions are tied to evidence.
+ 	- Review the go/no-go criteria.
+ 	- Make sure release decisions are tied to evidence.
 
 12. `docs/EXECUTION_EVIDENCE.md`
-	 - Use this as the running record for build/test evidence once implementation begins.
+ 	- Use this as the running record for build/test evidence once implementation begins.
 
 ---
 
@@ -117,16 +117,16 @@ That keeps the project anchored on a stable data path before adding search, encr
 
 | Feature Area | Primary Documentation |
 |--------------|-----------------------|
-| Requirements and constraints | `docs/INITIAL_REQUIREMENTS_REVISED.md` |
-| Requirement traceability | `docs/REQUIREMENT_TRACEABILITY_MATRIX.md` |
-| User story breakdown | `docs/User_stories.md` |
-| Prioritization | `docs/BACKLOG.md` |
-| Sprint ordering | `docs/SPRINTS_IMPLEMENTATION_PLAN.md` |
-| Test planning | `docs/TEST_PLAN.md` |
-| Evidence capture | `docs/EXECUTION_EVIDENCE.md` |
-| Release readiness | `docs/RELEASE_GATES.md` |
-| DoD and sign-off | `docs/CUSTOMER_ACCEPTANCE_AND_DOD.md` |
-| Class roles and integration | `docs/CLASS_RESPONSIBILITIES_AND_PLUGIN_INTEGRATION.md` |
+| Requirements and constraints | `docs/requirements/INITIAL_REQUIREMENTS_REVISED.md` |
+| Requirement traceability | `docs/validation/REQUIREMENT_TRACEABILITY_MATRIX.md` |
+| User story breakdown | `docs/requirements/User_stories.md` |
+| Prioritization | `docs/planning/BACKLOG.md` |
+| Sprint ordering | `docs/planning/SPRINTS_IMPLEMENTATION_PLAN.md` |
+| Test planning | `docs/validation/TEST_PLAN.md` |
+| Evidence capture | `docs/validation/EXECUTION_EVIDENCE.md` |
+| Release readiness | `docs/planning/RELEASE_GATES.md` |
+| DoD and sign-off | `docs/requirements/CUSTOMER_ACCEPTANCE_AND_DOD.md` |
+| Class roles and integration | `docs/architecture/CLASS_RESPONSIBILITIES_AND_PLUGIN_INTEGRATION.md` |
 
 ---
 

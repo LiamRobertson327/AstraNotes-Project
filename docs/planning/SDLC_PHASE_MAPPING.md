@@ -24,9 +24,9 @@ This project follows a structured SDLC with the following phases:
 
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
-| **Initial Requirements (Refined)** | `docs/INITIAL_REQUIREMENTS_REVISED.md` | Authoritative refined requirements including 9 FRs, NFRs, and SRs with detailed acceptance criteria per requirement |
-| **Product Requirements Document** | `docs/ASTRANOTES_PRD.md` | High-level product summary, goals, target users, in-scope/out-of-scope, success metrics, and principles |
-| **Requirement Traceability Matrix** | `docs/REQUIREMENT_TRACEABILITY_MATRIX.md` | Validates alignment between refined requirements and UML diagram evidence; includes gap analysis and status summary |
+| **Initial Requirements (Refined)** | `docs/requirements/INITIAL_REQUIREMENTS_REVISED.md` | Authoritative refined requirements including 9 FRs, NFRs, and SRs with detailed acceptance criteria per requirement |
+| **Product Requirements Document** | `docs/requirements/ASTRANOTES_PRD.md` | High-level product summary, goals, target users, in-scope/out-of-scope, success metrics, and principles |
+| **Requirement Traceability Matrix** | `docs/validation/REQUIREMENT_TRACEABILITY_MATRIX.md` | Validates alignment between refined requirements and UML diagram evidence; includes gap analysis and status summary |
 
 **How to use this phase**:
 - Start with the PRD to understand the overall product direction and goals.
@@ -42,8 +42,8 @@ This project follows a structured SDLC with the following phases:
 
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
-| **Architecture Document** | `docs/ARCHITECTURE.md` | 7-layer architecture design, 10K+ notes scale model, caching strategy, plugin system, security approach, and design decisions |
-| **Class Responsibilities & Plugin Integration** | `docs/CLASS_RESPONSIBILITIES_AND_PLUGIN_INTEGRATION.md` | Detailed class roles for `Note`, `NoteService`, `INoteRepository`, `SQLiteNoteRepository`, `PluginManager`, `IPlugin`, `EncryptionService`, and `CacheManager` with integration flow diagrams |
+| **Architecture Document** | `docs/architecture/ARCHITECTURE.md` | 7-layer architecture design, 10K+ notes scale model, caching strategy, plugin system, security approach, and design decisions |
+| **Class Responsibilities & Plugin Integration** | `docs/architecture/CLASS_RESPONSIBILITIES_AND_PLUGIN_INTEGRATION.md` | Detailed class roles for `Note`, `NoteService`, `INoteRepository`, `SQLiteNoteRepository`, `PluginManager`, `IPlugin`, `EncryptionService`, and `CacheManager` with integration flow diagrams |
 | **UML Starter Diagrams** | `docs/legacy/UML_STARTER_DIAGRAMS.md` | Use case, class, sequence, state, component, deployment, and activity diagrams showing system structure and behavior |
 
 **How to use this phase**:
@@ -61,10 +61,10 @@ This project follows a structured SDLC with the following phases:
 
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
-| **User Stories** | `docs/User_stories.md` | 18 user stories (Stories 1–8 core, Stories 9–18 gap coverage) with acceptance criteria, phase mapping, and DoD checklist |
-| **Product Backlog** | `docs/BACKLOG.md` | Stories prioritized by business value with effort estimates and initial scope |
-| **Sprint Implementation Plan** | `docs/SPRINTS_IMPLEMENTATION_PLAN.md` | 6 informal sprints organized by dependency order: (1) core lifecycle, (2) search/metadata, (3) security, (4) plugins, (5) trash, (6) hardening |
-| **Implementation Roadmap** | `docs/IMPLEMENTATION_ROADMAP.md` | Phase-based roadmap linking UI, note list, persistence, plugins, and search into implementation phases |
+| **User Stories** | `docs/requirements/USER_STORIES.md` | 18 user stories (Stories 1–8 core, Stories 9–18 gap coverage) with acceptance criteria, phase mapping, and DoD checklist |
+| **Product Backlog** | `docs/planning/BACKLOG.md` | Stories prioritized by business value with effort estimates and initial scope |
+| **Sprint Implementation Plan** | `docs/planning/SPRINTS_IMPLEMENTATION_PLAN.md` | 6 informal sprints organized by dependency order: (1) core lifecycle, (2) search/metadata, (3) security, (4) plugins, (5) trash, (6) hardening |
+| **Implementation Roadmap** | `docs/planning/IMPLEMENTATION_ROADMAP.md` | Phase-based roadmap linking UI, note list, persistence, plugins, and search into implementation phases |
 
 **How to use this phase**:
 - Review User Stories to see the breakdown of each requirement into actionable stories with acceptance criteria.
@@ -81,8 +81,8 @@ This project follows a structured SDLC with the following phases:
 
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
-| **Development Checkpoint** | `docs/DEVELOPMENT_CHECKPOINT.md` | Pre-development guide with recommended reading order, readiness checklist, first implementation milestones, and development guidance |
-| **Actions Performed** | `docs/ACTIONS_PERFORMED.md` | Running log of all significant implementation actions, file changes, and milestones (to be updated as coding progresses) |
+| **Development Checkpoint** | `docs/planning/DEVELOPMENT_CHECKPOINT.md` | Pre-development guide with recommended reading order, readiness checklist, first implementation milestones, and development guidance |
+| **Actions Performed** | `docs/legacy/ACTIONS_PERFORMED.md` | Running log of all significant implementation actions, file changes, and milestones (to be updated as coding progresses) |
 
 **How to use this phase**:
 - Start with the Development Checkpoint to understand the recommended implementation order.
@@ -99,8 +99,8 @@ This project follows a structured SDLC with the following phases:
 
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
-| **Test Plan** | `docs/TEST_PLAN.md` | Test strategy covering unit tests, integration tests, UI tests, performance tests, and security tests; includes requirement-to-test trace examples |
-| **Execution Evidence** | `docs/EXECUTION_EVIDENCE.md` | Running log for capturing test results, build output, screenshots, logs, and other artifacts proving that tests were executed and passed |
+| **Test Plan** | `docs/validation/TEST_PLAN.md` | Test strategy covering unit tests, integration tests, UI tests, performance tests, and security tests; includes requirement-to-test trace examples |
+| **Execution Evidence** | `docs/validaiton/EXECUTION_EVIDENCE.md` | Running log for capturing test results, build output, screenshots, logs, and other artifacts proving that tests were executed and passed |
 
 **How to use this phase**:
 - Use the Test Plan to design test cases for each user story and requirement.
@@ -116,8 +116,8 @@ This project follows a structured SDLC with the following phases:
 
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
-| **Release Gates** | `docs/RELEASE_GATES.md` | Go/no-go checklist, gate categories (Functional, Quality, Security, Reliability, Traceability), and example release decision record |
-| **Customer Acceptance and DoD** | `docs/CUSTOMER_ACCEPTANCE_AND_DOD.md` | Simplified Definition of Done (DoD) per user story and formal sign-off section for customer acceptance on each story and final release |
+| **Release Gates** | `docs/planning/RELEASE_GATES.md` | Go/no-go checklist, gate categories (Functional, Quality, Security, Reliability, Traceability), and example release decision record |
+| **Customer Acceptance and DoD** | `docs/requirements/CUSTOMER_ACCEPTANCE_AND_DOD.md` | Simplified Definition of Done (DoD) per user story and formal sign-off section for customer acceptance on each story and final release |
 
 **How to use this phase**:
 - Verify that all Release Gate criteria are satisfied before declaring a sprint or release ready.
@@ -133,8 +133,8 @@ This project follows a structured SDLC with the following phases:
 
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
-| **Traceability Chain** | `docs/TRACEABILITY_CHAIN.md` | End-to-end chain from requirements → user stories → backlog → sprints → tests → execution evidence → release gates; shows how all phases connect |
-| **Development Checkpoint** | `docs/DEVELOPMENT_CHECKPOINT.md` | Pre-development navigation guide; recommended reading order and checkpoint decision criteria (also listed under Implementation) |
+| **Traceability Chain** | `docs/validation/TRACEABILITY_CHAIN.md` | End-to-end chain from requirements → user stories → backlog → sprints → tests → execution evidence → release gates; shows how all phases connect |
+| **Development Checkpoint** | `docs/planning/DEVELOPMENT_CHECKPOINT.md` | Pre-development navigation guide; recommended reading order and checkpoint decision criteria (also listed under Implementation) |
 
 **How to use this phase**:
 - Refer to TRACEABILITY_CHAIN.md whenever you need to understand how a specific artifact (e.g., a user story or test case) connects to the larger project flow.

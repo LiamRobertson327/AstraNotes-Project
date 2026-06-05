@@ -5,6 +5,8 @@
 
 ---
 
+> **After Project Completion Note**: This document provides technical implementation of how different note types can be resolved.  This is not a high-level planning document.  This only needs to be read by developers.
+
 ## Overview of New Requirements
 
 This guide addresses four interconnected implementation areas:

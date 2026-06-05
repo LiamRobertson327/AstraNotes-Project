@@ -6,6 +6,8 @@
 
 > This roadmap reflects the SIMPLIFIED architecture. 50% fewer tasks, same end result.
 
+> **After Project Completion Note**: This file was initially used to track the progress of implementaiton, but the project later switched to other markdown files for trakcing the progress of requirements and user story completion.  While many of the tasks in this file say either not started or in progress, they are complete.
+
 ## Realignment Update (April 25, 2026)
 
 Execution should follow these now-stable decisions:

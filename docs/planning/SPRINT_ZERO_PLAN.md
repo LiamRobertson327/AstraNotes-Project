@@ -370,7 +370,7 @@ Following Sprint Zero completion:
 - Qt6.5+ (with Qt Creator or VS Code integration)
 - CMake 3.25+
 - C++23 compatible compiler (GCC 13+, Clang 16+, MSVC 2022+)
-- SQLite 3.40+
+- SQLite 3.X+
 - Git 2.30+
 - Doxygen (optional, for documentation)
 
