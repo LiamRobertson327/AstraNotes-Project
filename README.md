@@ -1,4 +1,4 @@
-<h1 align="center">AstraNotes-Project</h1>
+<h1 style="text-align: center">AstraNotes-Project</h1>
 
 ![logo](ReferenceIcon.png)
 
@@ -11,9 +11,14 @@
     * **Alpha Software**: You may encounter bugs or other incomplete features.  Always keep backups of important notes.
     * **Encryption**: Encryption is handled locally using AES-256-GCM.  We do not store your passwords.  If you lose or forget your encryption password, you secured notes are impossible to recover.
     * **Use at your own risk**: This software is provided "as is", without warranty of any kind.  The develoeprs are not responsible for any loss of data or damages resulting from the use of this application.
+    * The applicaiton does not ship as an installer.  When the project was built and compiled individual dll's were pulled to make the application run.  While working at the time of release, depending on your individual system there is a small possibility a dll is missing.  If this occurs report this to the github repo.  An official installer is planed for a future release.
 
 ## 📋 Requirements
-* C++23
+- C++23 toolchain
+- CMake 3.19 or newer
+- Qt 6 with Wdigets, Core, Sql, and Test modules
+- OpenSSL 3.x
+- SQLite runtime and headers if your platform does not provide them with the toolchain
 
 ## Overview
 AstraNotes is a plugin-based note taking application built in C++ with the Qt framework. It supports plaintext and markdown notes by default and can be extended with other plugins to include more note formats. Each note can optionally be encrypted using AES-256-GCM using Argon2ID to derive the key. 
@@ -22,92 +27,39 @@ AstraNotes is a plugin-based note taking application built in C++ with the Qt fr
 * Different Note Types
     * Plaintext
     * Markdown
-* Encryption to secure Notes
-* Autosave feature that runs every 3 seconds following a keystroke
+* Optional local encryption to secure notes
+* Autosave after a short configurable debounce window
 * Manual save of notes
 * Search current note content or title
-* Search through titles of all loaded in notes
-* Dynamic loading of plugins for different note types
-* Status indicator of whether the note is saved or not saved
+* Search through titles of all loaded notes
+* Dynamic plugin loading for different note types
+* Saved-status indicator and trash workflows
 
 ## 🗂️ Repository Structure
-```
-AstraNotes-Project
-├── src/
-│   ├── api/
-│   │   ├── INote.h
-│   │   ├── IPlugin.h
-│   │   └── ISnapshot.h
-│   ├── app/
-│   │   └── main.cpp
-│   ├── model/
-│   │   ├── Note.h
-│   │   ├── Note.cpp
-│   │   ├── Snapshot.h
-│   │   └── Snapshot.cpp
-│   ├── plugins/
-│   │   ├── IFormattingAction.h
-│   │   ├── MarkdownFormattingPlugin.h
-│   │   ├── MarkdownPlugin.h
-│   │   ├── MarkdownPlugin.cpp
-│   │   ├── PlaintextPlugin.h
-│   │   ├── PlaintextPlugin.cpp
-│   │   ├── PluginManager.h
-│   │   └── PluginManager.cpp
-│   ├── repository/
-│   │   ├── INoteRepository.h
-│   │   └── SqliteNoteRepository.h/.cpp
-│   ├── service/
-│   │   ├── interfaces/
-│   │   │   ├── INoteService.h
-│   │   │   ├── ISnapshotService.h
-│   │   │   └── ITrashService.h
-│   │   └── impl/
-│   │       ├── NoteService.h/.cpp
-│   │       ├── SnapshotService.h/.cpp
-│   │       └── TrashService.h/.cpp
-│   ├── crypto/
-│   │   ├── EncryptionService.h
-│   │   └── EncryptionService.cpp
-│   ├── logging/
-│   │   ├── AuditLogger.h
-│   │   └── AuditLogger.cpp
-│   └── ui/
-│       ├── mainwindow.ui
-│       ├── mainwindow.h
-│       ├── mainwindow.cpp
-│       ├── NoteListController.h/.cpp
-│       ├── AuditLogPanel.h/.cpp
-│       └── TrashDialog.h/.cpp
-├── tests/
-│   ├── unit/
-│   │   ├── snapshot_service_tests.cpp
-│   │   └── trash_service_tests.cpp
-│   └── smoke_tests.cpp
-├── docs/
-│   ├── PHASE_PROGRESS.md
-│   └── PLUGIN_DLL_IMPLEMENTATION_PLAN.md
-├── CMakeLists.txt
-├── .gitignore
-├── LICENSE
-└── README.md
-```
+The most important folders are:
+
+- `src/app` - application entry point and composition root
+- `src/ui` - Qt widgets, dialogs, and controllers
+- `src/service` - service interfaces and implementations
+- `src/repository` - SQLite persistence
+- `src/crypto` - encryption helpers
+- `src/logging` - audit logging
+- `tests` - smoke, unit, integration, and performance tests
+- `docs` - traceability, validation, architecture, and UML references
+
+For a current implementation map, see `docs/architecture/PROJECT_STRUCTURE.md`.
 
 ## 🙋🏻‍♂️ How to Use
-Download the latest release found [here](https://github.com/LiamRobertson327/AstraNotes-Project/releases) as a zip file.  Unzip the file and place the folder "AstraNotesTaker" on your desktop.  Inside the folder you will find the executable "AstraNotes.exe".  Simply double click the executable to run it and you are ready to start taking notes.
+Dependiing on your platform download the latest release found [here](https://github.com/LiamRobertson327/AstraNotes-Project/releases) as a zip file (Mac and Windows) or AppImage (Linux).
+- **Mac Users**: Unzip the file and place it on your desktop or another folder of your choosing.  Since this application was not uploaded to the Appstore, Apple will list it as untrsuted.  When you try to open it for the first time, it will not open.  To fix this go to System Settings -> Privacy & Security and scroll down to the security section and click on the **Allow** pop-up for AstraNotes.  You should now be able to use the application.
+- **Windows Users**: Unzip the file and place it on your desktop or another folder of your choosing.  Inside the folder you will see the file `AstraNotes.exe`.  Double click on the application to open and use it.
+- **Linux Users**: Download the AppImage file and place it on your desktop or in another folder.  Right click on the application, select properties, and click "Allow executing as a program".  For CLI users open a terminal in the same directory as the AppImage file and use the command '''chmod +x AstraNotes.AppImage'''.  After making the AppImage executable, you will be able to use AstraNotes.
+- **Developers**: You are free to clone the repoistory and you can run the application natively in the IDE or code editor such as VsCode.
 
 Note: The application will default to be a markdown note, but you may change this to plaintext by clicking the "+ New Note" button and selecting Plain Text.
 
-## 🔧 Build from source (cross-platform)
-These instructions cover building the project from source on Windows, macOS, and Linux. The project uses CMake and Qt6. You can provide Qt via `CMAKE_PREFIX_PATH` or `Qt6_DIR`.
-
-- Install dependencies:
-    - Qt 6 (Qt6 Widgets, Core, Sql, Test)
-    - CMake >= 3.19
-    - A C++23 toolchain (MSVC / clang / gcc)
-    - OpenSSL (system or Homebrew on macOS)
-
-- Configure and build (example; use a clean `build/` directory):
+## 🔧 Build From Source (cross-platform)
+The project builds on Windows, macOS, and Linux with CMake and Qt 6.
 
 ```powershell
 mkdir build
@@ -117,12 +69,21 @@ cmake --build . --config Release
 ctest -j 4 --output-on-failure
 ```
 
-- Notes per platform:
-    - Windows: set `CMAKE_PREFIX_PATH` to your Qt install folder or set `Qt6_DIR` to the `lib/cmake/Qt6` path. For MSYS2/MinGW you can set `OPENSSL_ROOT_DIR` to your MSYS2 prefix (e.g. `C:/msys64/ucrt64`).
-    - macOS: if you installed OpenSSL via Homebrew, CMake will try `/opt/homebrew/opt/openssl@3` or `/usr/local/opt/openssl@3`; otherwise set `OPENSSL_ROOT_DIR`.
-    - Linux: install Qt6 development packages from your distro or provide `CMAKE_PREFIX_PATH` to a Qt installation.
+Platform notes:
+
+- Windows: set `CMAKE_PREFIX_PATH` to your Qt install folder. If you use MSYS2 or another non-default OpenSSL install, set `OPENSSL_ROOT_DIR` as needed.
+- macOS: Homebrew OpenSSL is supported through the standard `/opt/homebrew/opt/openssl@3` or `/usr/local/opt/openssl@3` prefixes.
+- Linux: install Qt 6 development packages or point `CMAKE_PREFIX_PATH` at a Qt install that includes the Widgets, Sql, and Test modules.
 
 If you need a GUI bundle on macOS or Windows installers, use standard Qt deployment tools (`macdeployqt`, `windeployqt`) or CI packaging workflows. The top-level `CMakeLists.txt` avoids hardcoded Windows-only Qt paths and prefers environment/CMake-provided locations.
+
+## Documentation
+- Validation matrix: `docs/validation/TEST_VALIDATION_TRACEABILITY.md`
+- Test inventory: `tests/TESTS.md`
+- Traceability chain: `docs/validation/TRACEABILITY_CHAIN.md`
+- UML reference: `docs/legacy/UML_STARTER_DIAGRAMS.md`
+- AI oversight: `docs/validation/AI_HUMAN_OVERSIGHT.md`
+- Operations notes: `docs/operations/OPERATIONS_NOTES.md`
 
 ## Credits
 * **Qt License**: [Obligations of the GPL and LGPL](https://www.qt.io/development/open-source-lgpl-obligations) by Qt.

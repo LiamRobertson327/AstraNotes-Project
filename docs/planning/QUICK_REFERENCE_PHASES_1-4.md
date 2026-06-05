@@ -264,7 +264,7 @@ IPlugin *plugin = manager.getPlugin("markdown");
 | Operation | Time | Notes |
 |-----------|------|-------|
 | Save note | 5-20ms. | Prepared statement INSERT/UPDATE |
-| Load all notes | O(n)ms | n = number of notes |
+| Load all notes | O(n) complexity, <100ms for 10,000 notes | n = number of notes |
 | Switch modes | <1ms | QStackedWidget index change |
 | Populate toolbar | ~5ms | Create 8 QActions for markdown |
 | Markdown render | ~10ms | QTextBrowser rendering |

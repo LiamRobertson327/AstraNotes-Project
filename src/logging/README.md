@@ -1,20 +1,27 @@
 Logging
 
 Purpose
- - Provide an append-only audit stream of important application events (save, autosave, create, open, trash, restore, purge, snapshot, encrypt/decrypt). The audit subsystem is designed for observability and simple recovery analysis.
+ - Provide an append-only local audit stream for important application events such as save, autosave, create, open, trash, restore, purge, snapshot, encrypt, and decrypt.
 
 Files and responsibilities
- - `AuditLogger.h` / `AuditLogger.cpp`: Implements an append-only logger that writes structured entries to an audit file (timestamp, event type, note id, optional metadata). Emits `logAppended` Qt signals so the UI (`AuditLogPanel`) can subscribe and update in real time.
+ - `AuditLogger.h` / `AuditLogger.cpp`: Implements the Qt message handler and writes human-readable audit lines to `audit.log` in the application's writable data directory. It also emits `logAppended` so the UI can update in real time.
+
+Storage
+ - The log path is derived from `QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)` and falls back to the application directory if the standard location is unavailable.
+ - On typical desktop installs this resolves to a per-user app data folder, not the repository tree.
 
 Design considerations
- - The audit log is append-only by design to simplify integrity assumptions and reduce risk of accidental data loss. If entries must be removed for privacy reasons, provide a well-documented exported/erase workflow rather than in-place edits.
- - Keep the log format stable and machine-parseable (JSON lines or a compact binary representation) so external tools can consume it.
+ - The audit log is append-only to reduce the risk of accidental data loss.
+ - The current format is plain text lines with timestamp, severity, and normalized action text.
 
 Integration
- - `NoteService` and other services should write structured audit events rather than free-form text. UI panels subscribe to `AuditLogger::logAppended` to show recent events.
+ - `NoteService` and other services write log messages through Qt's logging system.
+ - UI panels subscribe to `AuditLogger::logAppended` to show recent events without reading the file directly.
 
 Testing
- - Tests should verify that expected events are emitted during save/restore/purge flows and that `AuditLogger` correctly writes entries to disk. Use a temporary file during tests and ensure it is removed afterwards.
+ - Tests should verify that expected events are emitted during save, restore, purge, and encryption flows.
+ - Use a temporary profile or writable temp directory when testing file output.
 
 Cross references
- - See `src/ui/README.md` for how the `AuditLogPanel` consumes audit events and `tests/TESTS.md` for integration tests that assert audit entries.
+ - See `src/ui/README.md` for how the `AuditLogPanel` consumes audit events.
+ - See `tests/TESTS.md` and `docs/TEST_VALIDATION_TRACEABILITY.md` for coverage and validation mapping.
