@@ -197,8 +197,6 @@
 
 ## Consolidation Guidance for the Final Stretch
 
-With less than two weeks remaining, prioritize reviewer clarity over perfect archival cleanup.
-
 ### Must remain easy to find
 
 - The root `README.md`

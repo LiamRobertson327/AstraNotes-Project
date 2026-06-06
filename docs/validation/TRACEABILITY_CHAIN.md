@@ -15,7 +15,7 @@ This document ties the project artifacts together so implementation work can be 
 | 3. Product Backlog | Prioritized backlog | Rank stories by priority and effort for planning | `docs/planning/BACKLOG.md` |
 | 4. Sprint Backlog | Informal sprint implementation plan | Sequence the work into implementation sprints | `docs/planning/SPRINTS_IMPLEMENTATION_PLAN.md` |
 | 5. Test Plan | Test strategy and scenario plan | Define what will be verified before release | `docs/validation/TEST_PLAN.md` |
-| 6. Execution Evidence | Test results, screenshots, logs, build output | Record proof that the implementation and tests were executed | All tests were passed when ran through the GitHub CI Workflow |
+| 6. Test results, screenshots, logs, build output | Record proof that the implementation and tests were executed | All tests were passed when ran through the GitHub CI Workflow |
 | 7. Release Gates | Go/No-Go checklist and readiness criteria | Decide whether the project is ready to move forward | `docs/planning/RELEASE_GATES.md` |
 
 ---
@@ -27,8 +27,7 @@ This document ties the project artifacts together so implementation work can be 
 3. Prioritize the user stories in the product backlog.
 4. Pull the highest-value backlog items into sprint backlogs.
 5. Write test cases directly from the sprint backlog and acceptance criteria.
-6. Capture execution evidence as tests and builds are run.
-7. Use release gates to decide whether the sprint or release is ready.
+6. Use release gates to decide whether the sprint or release is ready.
 
 ---
 
@@ -36,4 +35,4 @@ This document ties the project artifacts together so implementation work can be 
 
 Current repository chain:
 
-`Requirements -> User Stories -> Product Backlog -> Sprint Backlog -> Test Plan -> Execution Evidence -> Release Gates`
+`Requirements -> User Stories -> Product Backlog -> Sprint Backlog -> Test Plan -> Release Gates`

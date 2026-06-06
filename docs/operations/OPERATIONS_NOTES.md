@@ -23,4 +23,3 @@
 - Keep the README, validation docs, and architecture docs aligned with implementation changes.
 - Preserve legacy docs when they explain the evolution of requirements or design decisions.
 - Update the traceability matrix when tests are renamed, added, or removed.
-- Record major build, test, and runtime checks in `docs/EXECUTION_EVIDENCE.md`.

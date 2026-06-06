@@ -28,8 +28,7 @@ Release gates connect the planned work to the actual evidence collected during i
 
 ### Traceability Gate
 - Work can be traced from requirement to user story to backlog to sprint to test evidence.
-- Execution evidence is recorded in `docs/validation/EXECUTION_EVIDENCE.md` or equivalent artifacts.
-
+- Tests evidence is obtained from running the tests and the automatic CI workflow that runs on push or PR.
 ---
 
 ## 2. Go / No-Go Checklist
@@ -61,7 +60,7 @@ If any required item is not satisfied, the release is **No-Go** until the issue 
 
 1. Confirm the sprint scope.
 2. Review completed stories and acceptance criteria.
-3. Review test results and execution evidence.
+3. Review test results.
 4. Check for unresolved critical defects.
 5. Record the final release decision.
 

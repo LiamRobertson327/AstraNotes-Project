@@ -200,7 +200,6 @@ This sprint plan follows the dependency chain from the user stories:
 **Exit criteria**:
 - Users can search within the current note and navigate matches reliably.
 - The app prompts before exit when there are unsaved changes.
-- Restart recovery behavior is documented and exercised in execution evidence.
 
 ---
 
@@ -268,7 +267,6 @@ This sprint plan follows the dependency chain from the user stories:
 **Exit criteria**:
 - Deleted notes move to Trash instead of being removed immediately.
 - Purge and restore are transactional and repeatable.
-- Performance and recovery behavior are documented in execution evidence.
 
 ---
 

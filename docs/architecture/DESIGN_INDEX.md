@@ -4,7 +4,7 @@
 **Project**: AstraNotes - High-Performance C++23 Note-Taking Application  
 **Version**: Architecture v1.0
 
-> **After Project Completion Note**: This document makes some assumptions from the old `ARCHITECTURE.md` before it was simplified.  Regardless this file is mostly for navigation of how other files work together and provides other high-level information regarding the project.
+> **After Project Completion Note**: This document makes some assumptions from the old `ARCHITECTURE.md` before it was simplified.  Regardless this file is mostly for navigation of how other files work together and provides other high-level information regarding the project.  This file also references VISUAL_REFERENCE.md which was moved to the legacy folder as it represents a slightly older architecture.
 
 ## Documentation Consistency Baseline (April 25, 2026)
 
@@ -30,8 +30,8 @@ This comprehensive design package includes **4 detailed documents** plus this in
 |----------|---------|----------|------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Complete system design, patterns, layers | Architects, Senior Devs | ~5,000 words |
 | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | File organization, module layout | All developers | ~4,000 words |
-| [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) | Phase-by-phase tasks, timeline | Project managers, Leads | ~3,000 words |
-| [legacy/VISUAL_REFERENCE.md](legacy/VISUAL_REFERENCE.md) | Legacy diagrams, class hierarchies, flows | Visual learners | ~2,000 words |
+| [IMPLEMENTATION_ROADMAP.md](../planning/IMPLEMENTATION_ROADMAP.md) | Phase-by-phase tasks, timeline | Project managers, Leads | ~3,000 words |
+| [VISUAL_REFERENCE.md](../legacy/VISUAL_REFERENCE.md) | Legacy diagrams, class hierarchies, flows | Visual learners | ~2,000 words |
 | **INDEX.md** (this file) | Navigation & quick reference | Everyone | - |
 
 ---
@@ -42,24 +42,24 @@ This comprehensive design package includes **4 detailed documents** plus this in
 
 **🏗️ Software Architect**
 → Start with [ARCHITECTURE.md](ARCHITECTURE.md)  
-→ Then review [legacy/VISUAL_REFERENCE.md](legacy/VISUAL_REFERENCE.md) for historical diagrams
+→ Then review [legacy/VISUAL_REFERENCE.md](../legacy/VISUAL_REFERENCE.md) for historical diagrams
 
 **👨‍💼 Project Manager**
-→ Start with [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)  
+→ Start with [IMPLEMENTATION_ROADMAP.md](../planning/IMPLEMENTATION_ROADMAP.md)  
 → Review timeline and phase breakdown
 
 **💻 Developer (New to project)**
 → Start with [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)  
-→ Then [legacy/VISUAL_REFERENCE.md](legacy/VISUAL_REFERENCE.md) for historical system overview
+→ Then [legacy/VISUAL_REFERENCE.md](../legacy/VISUAL_REFERENCE.md) for historical system overview
 
 **🔧 Developer (Starting implementation)**
-→ Start with [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) Phase 1  
+→ Start with [IMPLEMENTATION_ROADMAP.md](../planning/IMPLEMENTATION_ROADMAP.md) Phase 1  
 → Cross-reference [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for file locations  
 → Use [ARCHITECTURE.md](ARCHITECTURE.md) for detailed specs
 
 **🧪 QA / Test Engineer**
 → See [ARCHITECTURE.md](ARCHITECTURE.md) section 8 (Testing)  
-→ Review Phase 7 in [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
+→ Review Phase 7 in [IMPLEMENTATION_ROADMAP.md](../planning/IMPLEMENTATION_ROADMAP.md)
 
 ---
 

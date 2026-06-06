@@ -100,11 +100,9 @@ This project follows a structured SDLC with the following phases:
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
 | **Test Plan** | `docs/validation/TEST_PLAN.md` | Test strategy covering unit tests, integration tests, UI tests, performance tests, and security tests; includes requirement-to-test trace examples |
-| **Execution Evidence** | `docs/validaiton/EXECUTION_EVIDENCE.md` | Running log for capturing test results, build output, screenshots, logs, and other artifacts proving that tests were executed and passed |
 
 **How to use this phase**:
 - Use the Test Plan to design test cases for each user story and requirement.
-- Execute tests and capture evidence in EXECUTION_EVIDENCE.md as you complete each sprint.
 - Link test results back to user stories and requirements using the trace examples.
 - Verify that performance targets, security requirements, and crash recovery behavior are all validated before moving to Release.
 
@@ -133,7 +131,7 @@ This project follows a structured SDLC with the following phases:
 
 | Document | File Path | Purpose |
 |-----------|-----------|---------|
-| **Traceability Chain** | `docs/validation/TRACEABILITY_CHAIN.md` | End-to-end chain from requirements → user stories → backlog → sprints → tests → execution evidence → release gates; shows how all phases connect |
+| **Traceability Chain** | `docs/validation/TRACEABILITY_CHAIN.md` | End-to-end chain from requirements → user stories → backlog → sprints → tests → release gates; shows how all phases connect |
 | **Development Checkpoint** | `docs/planning/DEVELOPMENT_CHECKPOINT.md` | Pre-development navigation guide; recommended reading order and checkpoint decision criteria (also listed under Implementation) |
 
 **How to use this phase**:
@@ -188,7 +186,7 @@ This project follows a structured SDLC with the following phases:
 │ Testing & Verification                                          │
 ├─────────────────────────────────────────────────────────────────┤
 │ • TEST_PLAN.md                                                  │
-│ • EXECUTION_EVIDENCE.md (update as tests run)                   │
+│                                                                 │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
@@ -218,7 +216,7 @@ This project follows a structured SDLC with the following phases:
 | Design | Architecture, Class Responsibilities, UML Diagrams | Define system structure and behavior |
 | Planning | User Stories, Backlog, Sprint Plan, Roadmap | Break requirements into sprints; organize work |
 | Implementation | Development Checkpoint, Actions Log, Source Code | Write code; update progress tracking |
-| Testing & Verification | Test Plan, Execution Evidence | Design and run tests; capture results |
+| Testing & Verification | Test Plan | Design and run tests; capture results |
 | Release & Deployment | Release Gates, Customer Acceptance | Validate readiness; obtain sign-off; release |
 | Meta / Cross-Cutting | Traceability Chain, Development Checkpoint | Navigate across phases; audit completeness |
 
@@ -244,6 +242,5 @@ If you want to audit the entire project from the beginning, review documents in 
 ## Notes
 
 - The TRACEABILITY_CHAIN.md and DEVELOPMENT_CHECKPOINT.md documents serve as navigation aids and should be consulted throughout all phases.
-- ACTIONS_PERFORMED.md and EXECUTION_EVIDENCE.md should be updated continuously as work progresses.
 - All new code changes should be traced back to at least one user story and requirement ID using the IDs from REQUIREMENT_TRACEABILITY_MATRIX.md.
 - This document should be updated if new documentation artifacts are created or if the phase structure changes.

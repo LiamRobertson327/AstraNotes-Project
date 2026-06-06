@@ -125,19 +125,7 @@ Need to add at least one of the following:
 - A documented manual test suite with expected/actual results and pass/fail status
 - Test execution outputs/screenshots/log excerpts linked from docs
 
-### 3) Execution Evidence Population
-
-`docs/EXECUTION_EVIDENCE.md` is currently template-style and mostly unchecked.
-
-Need to add real entries for:
-
-- Build execution evidence
-- Runtime launch evidence
-- Test execution evidence
-- Security-related execution evidence (for current implemented scope)
-- Release gate decision evidence
-
-### 4) AI + Human Oversight Evidence (Make Explicit)
+### 3) AI + Human Oversight Evidence (Make Explicit)
 
 AI usage is implied in several docs, but not centralized for defense.
 
@@ -153,7 +141,7 @@ Suggested sections:
 - What was rejected and why
 - Final human-owned decisions
 
-### 5) Security / Deployment / Maintenance Final Notes
+### 4) Security / Deployment / Maintenance Final Notes
 
 These topics appear distributed across documents but are not finalized as concise operational notes.
 
@@ -167,7 +155,7 @@ If you prefer fewer files, consolidate into one:
 
 - `docs/OPERATIONS_NOTES.md` with Security, Deployment, and Maintenance sections
 
-### 6) Final Submission Decision Summary
+### 5) Final Submission Decision Summary
 
 Record the current plan in one place so the defense packet can be defended quickly:
 

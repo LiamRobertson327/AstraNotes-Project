@@ -1,6 +1,6 @@
 # AstraNotes: Simplified Project Structure
 
-> **After Project Completion Note**: This file was created near the start of implementation.  The project does not stricly follow the structure discussed in the beginning of the project, however it is mostly correct.  The complete, finalized project structure is given at the end of the file.
+> **After Project Completion Note**: This file was created near the start of implementation.  The project does not strictly follow the structure discussed in the beginning of the project, however it is mostly correct.  The complete, finalized project structure is given at the end of the file.
 
 ## Alignment Note (April 25, 2026)
 

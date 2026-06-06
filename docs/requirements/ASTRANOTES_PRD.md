@@ -153,7 +153,6 @@ Supporting planning and traceability documents include:
 - `docs/planning/BACKLOG.md`
 - `docs/planning/SPRINTS_IMPLEMENTATION_PLAN.md`
 - `docs/validation/TEST_PLAN.md`
-- `docs/validation/EXECUTION_EVIDENCE.md`
 - `docs/planning/RELEASE_GATES.md`
 - `docs/requirements/CUSTOMER_ACCEPTANCE_AND_DOD.md`
 - `docs/validation/TRACEABILITY_CHAIN.md`
