@@ -4,6 +4,8 @@
 
 All four phases of the AstraNotes plugin architecture and persistence layer have been fully implemented and integrated into MainWindow. The system is ready for Phase 5 (Integration Testing and Load Functionality).
 
+> **After Project Completion Note**: This document shows that the first four phases were implemented.  The file structure and code implementation examples may not reflect the final version of the project due to refactors or code improvements implemented in later phases are throughout maintenance of the application.  At the time of generating this document the information regarding the project structure was correct.
+
 ### Phases Completed
 
 **Phase 1: Note-Type Awareness** ✅
@@ -301,7 +303,7 @@ find_package(Qt6 COMPONENTS Core Gui Widgets Sql REQUIRED)
 target_link_libraries(AstraNotes Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Sql)
 ```
 
-**C++ Standard**: C++17 minimum (C++23 for future expected<> usage)
+**C++ Standard**: C++23
 
 ---
 
