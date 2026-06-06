@@ -19,11 +19,11 @@
 
 | Area | What Will Be Tested | Primary Source |
 |------|---------------------|----------------|
-| Requirements | Functional, non-functional, and security behavior | `docs/INITIAL_REQUIREMENTS_REVISED.md` |
-| User Stories | Acceptance criteria and story behavior | `docs/User_stories.md` |
-| Backlog | Priority-driven implementation scope | `docs/BACKLOG.md` |
-| Sprint Plan | Work executed per sprint | `docs/SPRINTS_IMPLEMENTATION_PLAN.md` |
-| UML Traceability | Requirement-to-design alignment | `docs/REQUIREMENT_TRACEABILITY_MATRIX.md` |
+| Requirements | Functional, non-functional, and security behavior | `docs/requirements/INITIAL_REQUIREMENTS_REVISED.md` |
+| User Stories | Acceptance criteria and story behavior | `docs/requirements/USER_STORIES.md` |
+| Backlog | Priority-driven implementation scope | `docs/planning/BACKLOG.md` |
+| Sprint Plan | Work executed per sprint | `docs/planning/SPRINTS_IMPLEMENTATION_PLAN.md` |
+| UML Traceability | Requirement-to-design alignment | `docs/validation/REQUIREMENT_TRACEABILITY_MATRIX.md` |
 
 ---
 
@@ -34,7 +34,6 @@
 - Repository operations
 - Plugin interface behavior
 - Encryption and decryption helpers
-- Cache invalidation logic
 - Trash state transitions
 
 ### 3.2 Integration Tests
@@ -72,12 +71,17 @@
 |---------------------|-----------------------|
 | FR1 / Story 1 | Create note, edit note, manual save, autosave, save error handling |
 | FR2 / Story 2, 9 | Plugin discovery, format selection, missing-plugin fallback |
+| FR3 / Story 3, 10| Searching within a note content |
+| FR4 / Story 4 | Searching across all saved notes by title|
 | FR5 / Story 11 | WAL persistence, crash recovery, save completion durability |
 | FR6 / Story 6, 12 | AES-256-GCM encryption, Argon2id, IV handling, password prompt |
+| FR7 / Story 2, 4, 7| Ensure metadata is properly created, stored, and fetched |
 | FR8 / Story 7, 14 | Snapshot rotation, restore safety snapshot, FIFO purge |
 | FR9 / Story 8, 13 | Trash workflow, restore, retention, auto-purge |
 | NFR1 / Story 1, 4, 5 | Save/load/search/pagination timing benchmarks |
+| NFR2 / Story 5 | Create multiple notes and test that they are persisted |
 | NFR3 / Story 11, 15 | Crash recovery, power-loss recovery, graceful shutdown |
+| SR1 / Story 12 | Encrypt, Decrypt, Derive key from password |
 | SR2 / Story 16 | Immutable audit log creation and redaction |
 | SR3 / Story 17 | Prepared statements and database hardening |
 | SR4 / Story 18 | Error logging, user notification, state preservation |
@@ -96,14 +100,3 @@ Release testing is considered complete when:
 - Release gate criteria in `docs/RELEASE_GATES.md` are satisfied.
 
 ---
-
-## 6. Evidence to Capture
-
-During execution, capture:
-- Test run output
-- Build output
-- Screenshots of UI flows where relevant
-- Logs for crash recovery or error handling tests
-- Benchmark results for performance tests
-
-This evidence should be saved in `docs/EXECUTION_EVIDENCE.md` or attached to the implementation record.
