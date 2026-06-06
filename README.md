@@ -59,7 +59,7 @@ Depending on your platform download the latest release found [here](https://gith
 Note: The application will default to be a markdown note, but you may change this to plaintext by clicking the "+ New Note" button and selecting Plain Text.
 
 ## 🔧 Build from Source (cross-platform)
-The project builds on Windows, macOS, and Linux with CMake and Qt 6.
+The project builds on Windows, macOS, and Linux with CMake and Qt 6.  The CMakeLists.txt used to build the project is included.  Alternatively:
 
 ```powershell
 mkdir build
@@ -82,6 +82,7 @@ If you need a GUI bundle on macOS or Windows installers, use standard Qt deploym
 - Test inventory: `tests/TESTS.md`
 - Traceability chain: `docs/validation/TRACEABILITY_CHAIN.md`
 - UML reference: `docs/legacy/UML_STARTER_DIAGRAMS.md`
+- UML Files: `docs/UML diagrams`
 - AI oversight: `docs/validation/AI_HUMAN_OVERSIGHT.md`
 - Operations notes: `docs/operations/OPERATIONS_NOTES.md`
 
