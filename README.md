@@ -58,6 +58,33 @@ Depending on your platform download the latest release found [here](https://gith
 
 Note: The application will default to be a markdown note, but you may change this to plaintext by clicking the "+ New Note" button and selecting Plain Text.
 
+## 💻 Keyboard Shortcuts
+- **Save Note**: Ctrl + S
+- **Find in Note**: Ctrl + F
+- **Select Multiple Notes**: Ctrl + Click
+- **Cycle to Next Highlighted Search Match**: Enter
+
+## 📝 User Guide
+- To create a new note
+    - Click on the `+ New Note` button.  A dropdown box will appear with the supported note types.  Clicking on one of them will open up a fresh note of that type.  A title is required, but the body of the note is not to be saved.
+- To Save a Note
+    - By default auto-save will be enabled, but this can be toggled off via the `Auto-save` checkbox in the top right corner.  To manually save a note, either click the save button or use the shortcut.
+- To Edit a note
+    - All your saved notes will appear on the left hand side of the application.  You are able to click on any of the notes and they will automatically open.  
+- To Delete a note
+    - If you want to delete one or multiple notes, you can select them from the list on the left hand side and then click the `Delete` button.
+- To Recover a deleted note
+    - When a note is deleted it is moved to the trash can.  By default notes will stay in the trashcan and can be recovered for 14 days, after which they will be automatically deleted.  To recover the note, click on the `Trash Can` button and there you will either be able to select one or multiple notes and restore them or purge (permanently delete) them.
+- To Encrypt a Note
+    - When you have a note open, clicking the `Secure` checkbox in the top right corner will change the note state to unsaved.  Upon saving the note, the system will prompt you for a password to encrypt the note with.  This password does not need to be the same as the password used for other notes.  After entering the password, the note is encrypted and every time it is opened you must enter in the correct password.  To remove the encryption, once the note is open clicking the same `Secure` checkbox will remove the encryption.
+    - **Warning: If you forget your password for an encrypted note, that specific note is no longer recoverable unless you remember the password.**
+- Settings
+    - The `Settings` button has 4 user-configurable attributes.
+        - **Retention**: The number of days until a trashed note is automatically deleted.  This is configurable from 1 to 60 days.
+        - **Enable Automatic purge**: If enabled, every day trashed notes will be permanently deleted.
+        - **Enable default encryption**: If enabled, the first time a note is saved the system will also try to encrypt it.  This setting will not affect notes that already exist within the system.
+        - **Auto-save debounce interval**: The amount of time after a change to a note is made and the system automatically saving the changes.  This is configurable from 5-10000ms or 0.5-10 seconds.
+
 ## 🔧 Build from Source (cross-platform)
 The project builds on Windows, macOS, and Linux with CMake and Qt 6.  The CMakeLists.txt used to build the project is included.  Alternatively:
 
