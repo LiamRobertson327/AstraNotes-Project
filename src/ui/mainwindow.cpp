@@ -429,7 +429,7 @@ bool MainWindow::confirmUnsavedChanges(const QString &actionText) {
     }
 
     if (choice == QMessageBox::Save) {
-        return saveCurrentNote();
+        return saveCurrentNote(false);
     }
 
     return true;

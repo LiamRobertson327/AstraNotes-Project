@@ -75,6 +75,8 @@ Note: The application will default to be a markdown note, but you may change thi
     - If you want to delete one or multiple notes, you can select them from the list on the left hand side and then click the `Delete` button.
 - To Recover a deleted note
     - When a note is deleted it is moved to the trash can.  By default notes will stay in the trashcan and can be recovered for 14 days, after which they will be automatically deleted.  To recover the note, click on the `Trash Can` button and there you will either be able to select one or multiple notes and restore them or purge (permanently delete) them.
+- Snapshots
+    - Snapshots are created every time a note is manually saved by the user.  Only two snapshots can exist per note at a time and the user has the option of either deleting the snapshot(s) or restoring the current note to either of them.  This can be accessed by clicking the `History` button.
 - To Encrypt a Note
     - When you have a note open, clicking the `Secure` checkbox in the top right corner will change the note state to unsaved.  Upon saving the note, the system will prompt you for a password to encrypt the note with.  This password does not need to be the same as the password used for other notes.  After entering the password, the note is encrypted and every time it is opened you must enter in the correct password.  To remove the encryption, once the note is open clicking the same `Secure` checkbox will remove the encryption.
     - **Warning: If you forget your password for an encrypted note, that specific note is no longer recoverable unless you remember the password.**
